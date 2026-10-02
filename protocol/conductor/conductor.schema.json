@@ -1336,7 +1336,8 @@
           "items": {
             "$ref": "#/$defs/RunningActivity"
           },
-          "description": "On executor.describe and hosted reports; omitted from executor.report."
+          "description": "On executor.describe and hosted reports, [] when nothing runs; omitted from executor.report.",
+          "x-go-pointer": true
         },
         "claim_lag_ms": {
           "type": "integer",
@@ -1456,7 +1457,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1474,7 +1475,6 @@
         }
       },
       "required": [
-        "command_id",
         "target"
       ],
       "additionalProperties": false
@@ -1485,7 +1485,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1503,7 +1503,6 @@
         }
       },
       "required": [
-        "command_id",
         "target"
       ],
       "additionalProperties": false
@@ -1514,7 +1513,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1529,7 +1528,6 @@
         }
       },
       "required": [
-        "command_id",
         "target"
       ],
       "additionalProperties": false
@@ -1540,7 +1538,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1559,7 +1557,6 @@
         }
       },
       "required": [
-        "command_id",
         "target",
         "at"
       ],
@@ -1571,7 +1568,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1592,7 +1589,6 @@
         }
       },
       "required": [
-        "command_id",
         "target",
         "priority"
       ],
@@ -1604,7 +1600,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1622,7 +1618,6 @@
         }
       },
       "required": [
-        "command_id",
         "target"
       ],
       "additionalProperties": false
@@ -1633,7 +1628,7 @@
       "properties": {
         "command_id": {
           "type": "string",
-          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict. The Cloud always sends one; without it nothing is recorded or replayed."
         },
         "target": {
           "$ref": "#/$defs/Target"
@@ -1654,7 +1649,6 @@
         }
       },
       "required": [
-        "command_id",
         "target",
         "name"
       ],
