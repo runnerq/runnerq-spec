@@ -1,7 +1,10 @@
-// Command gen writes the spec's constants as Go or TypeScript source.
+// Command gen writes the spec's constants, or its Postgres schema
+// (-part schema), as Go or TypeScript source.
 //
 //	go run ./tools/gen -lang go -pkg spec -out ../internal/spec/spec.go
+//	go run ./tools/gen -lang go -pkg spec -part schema -out ../internal/spec/schema.go
 //	go run ./tools/gen -lang ts -out ../src/spec.ts
+//	go run ./tools/gen -lang ts -part schema -out ../src/spec-schema.ts
 //
 // Run it from the spec root (the default -root).
 package main
@@ -45,22 +48,40 @@ func main() {
 	lang := flag.String("lang", "", "go or ts")
 	pkg := flag.String("pkg", "spec", "Go package name")
 	out := flag.String("out", "", "output file")
+	part := flag.String("part", "constants", "constants or schema")
 	flag.Parse()
 	if *out == "" {
 		fail(fmt.Errorf("-out is required"))
 	}
-	s, err := load(*root)
-	if err != nil {
-		fail(err)
-	}
 	var src []byte
-	switch *lang {
-	case "go":
-		src, err = goSource(s, *pkg)
-	case "ts":
-		src, err = tsSource(s)
+	var err error
+	switch *part {
+	case "constants":
+		var s *spec
+		if s, err = load(*root); err == nil {
+			switch *lang {
+			case "go":
+				src, err = goSource(s, *pkg)
+			case "ts":
+				src, err = tsSource(s)
+			default:
+				err = fmt.Errorf("-lang must be go or ts")
+			}
+		}
+	case "schema":
+		var s *schema
+		if s, err = loadSchema(*root); err == nil {
+			switch *lang {
+			case "go":
+				src, err = goSchema(s, *pkg)
+			case "ts":
+				src, err = tsSchema(s)
+			default:
+				err = fmt.Errorf("-lang must be go or ts")
+			}
+		}
 	default:
-		err = fmt.Errorf("-lang must be go or ts")
+		err = fmt.Errorf("-part must be constants or schema")
 	}
 	if err != nil {
 		fail(err)

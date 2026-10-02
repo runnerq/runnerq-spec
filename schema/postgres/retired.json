@@ -1,0 +1,9 @@
+{
+  "description": "Columns the migrations remove after moving their data. An implementation that only validates (and does not migrate) must refuse a database that still has one: older SDK versions are using it.",
+  "columns": [
+    {
+      "name": "runnerq_activities.payload",
+      "doc": "Payloads moved to runnerq_inputs (0001_baseline)."
+    }
+  ]
+}

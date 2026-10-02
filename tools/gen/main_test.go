@@ -29,3 +29,28 @@ func TestGenerate(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateSchema(t *testing.T) {
+	s, err := loadSchema("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	goSrc, err := goSchema(s, "spec")
+	if err != nil {
+		t.Fatalf("Go output does not format: %v", err)
+	}
+	tsSrc, err := tsSchema(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`{Name: "0001_baseline", SQL: `, `Name: "idx_runnerq_dequeue_order_v2"`, `RetiredColumns: []string{"runnerq_activities.payload"}`} {
+		if !strings.Contains(string(goSrc), want) {
+			t.Errorf("Go output lacks %q", want)
+		}
+	}
+	for _, want := range []string{`"name": "0001_baseline"`, `export const postgresCatalog: Catalog = {`} {
+		if !strings.Contains(string(tsSrc), want) {
+			t.Errorf("TypeScript output lacks %q", want)
+		}
+	}
+}

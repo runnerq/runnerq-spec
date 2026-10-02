@@ -1,0 +1,37 @@
+{
+  "description": "Indexes built with CREATE INDEX CONCURRENTLY after the migrations, one statement at a time outside any transaction, so building them never blocks writes to a live table. For each, in order: drop it if it exists but is invalid (a build killed midway), build it if missing, then drop the index it replaces, so the table is never without one of them.",
+  "indexes": [
+    {
+      "name": "idx_runnerq_dequeue_effective_v2",
+      "table": "runnerq_activities",
+      "replaces": "idx_runnerq_dequeue_effective",
+      "doc": "Single-type dequeue: with activity_type pinned by equality the rest of the key is the dequeue ORDER BY, so the claim is an index walk stopping at the first unlocked row.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_dequeue_effective_v2\nON runnerq_activities (\n    queue_name,\n    activity_type,\n    priority DESC,\n    retry_count DESC,\n    COALESCE(scheduled_at, created_at) ASC\n)\nWHERE status IN ('pending', 'scheduled', 'retrying', 'waiting')"
+    },
+    {
+      "name": "idx_runnerq_dequeue_order_v2",
+      "table": "runnerq_activities",
+      "replaces": "idx_runnerq_dequeue_order",
+      "doc": "Untyped and multi-type dequeue: key order is the dequeue ORDER BY, so Postgres never sorts the eligible backlog to find the top row.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_dequeue_order_v2\nON runnerq_activities (\n    queue_name,\n    priority DESC,\n    retry_count DESC,\n    COALESCE(scheduled_at, created_at) ASC\n)\nWHERE status IN ('pending', 'scheduled', 'retrying', 'waiting')"
+    },
+    {
+      "name": "idx_runnerq_query_created",
+      "table": "runnerq_activities",
+      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_created\nON runnerq_activities (created_at DESC, id DESC)"
+    },
+    {
+      "name": "idx_runnerq_query_status_created",
+      "table": "runnerq_activities",
+      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_status_created\nON runnerq_activities (status, created_at DESC, id DESC)"
+    },
+    {
+      "name": "idx_runnerq_query_type_created",
+      "table": "runnerq_activities",
+      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_type_created\nON runnerq_activities (activity_type, created_at DESC, id DESC)"
+    }
+  ]
+}

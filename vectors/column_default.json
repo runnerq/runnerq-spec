@@ -1,0 +1,14 @@
+{
+  "description": "ColumnDefault(default) normalizes a column default (information_schema.columns.column_default, or the DDL's DEFAULT expression) for comparison: null stays null; otherwise lowercase it, remove the casts ::text, ::integer, ::bigint and ::smallint, and remove whitespace and parentheses. A result starting with \"nextval\" (a serial column's sequence, named per schema) becomes \"nextval\".",
+  "cases": [
+    { "name": "no default", "input": { "default": null }, "output": null },
+    { "name": "text literal", "input": { "default": "'pending'::text" }, "output": "'pending'" },
+    { "name": "text literal as written", "input": { "default": "'pending'" }, "output": "'pending'" },
+    { "name": "integer", "input": { "default": "300" }, "output": "300" },
+    { "name": "now()", "input": { "default": "now()" }, "output": "now" },
+    { "name": "NOW() as written", "input": { "default": "NOW()" }, "output": "now" },
+    { "name": "serial", "input": { "default": "nextval('runnerq_events_id_seq'::regclass)" }, "output": "nextval" },
+    { "name": "serial in another schema", "input": { "default": "nextval('tenant_42.runnerq_events_id_seq'::regclass)" }, "output": "nextval" },
+    { "name": "smallint zero", "input": { "default": "0" }, "output": "0" }
+  ]
+}

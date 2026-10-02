@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -407,4 +408,44 @@ func defaultMaxRetryDelay(t *testing.T) int64 {
 	}
 	t.Fatal("constants.json lacks default_max_retry_delay_seconds")
 	return 0
+}
+
+var (
+	indexSchemaRe = regexp.MustCompile(`\bon\s+(?:"(?:[^"]|"")+"|[a-z_]\w*)\.`)
+	indexCastRe   = regexp.MustCompile(`::text(?:\[\])?`)
+	indexAnyRe    = regexp.MustCompile(`=\s*any\s*\(\s*array\s*\[`)
+	indexAscRe    = regexp.MustCompile(`\s+asc\b`)
+	indexStripRe  = regexp.MustCompile(`[\s"()\[\];]`)
+	defaultCastRe = regexp.MustCompile(`::(?:text|integer|bigint|smallint)`)
+	defaultStrip  = regexp.MustCompile(`[\s()]`)
+)
+
+func TestIndexDefinition(t *testing.T) {
+	check(t, "vectors/index_definition.json", func(in struct {
+		Definition string `json:"definition"`
+	}) (any, error) {
+		s := strings.ToLower(in.Definition)
+		s = indexSchemaRe.ReplaceAllString(s, "on ")
+		s = indexCastRe.ReplaceAllString(s, "")
+		s = indexAnyRe.ReplaceAllString(s, "in(")
+		s = strings.ReplaceAll(s, "using btree", "")
+		s = indexAscRe.ReplaceAllString(s, "")
+		return indexStripRe.ReplaceAllString(s, ""), nil
+	})
+}
+
+func TestColumnDefault(t *testing.T) {
+	check(t, "vectors/column_default.json", func(in struct {
+		Default *string `json:"default"`
+	}) (any, error) {
+		if in.Default == nil {
+			return nil, nil
+		}
+		s := defaultCastRe.ReplaceAllString(strings.ToLower(*in.Default), "")
+		s = defaultStrip.ReplaceAllString(s, "")
+		if strings.HasPrefix(s, "nextval") {
+			return "nextval", nil
+		}
+		return s, nil
+	})
 }

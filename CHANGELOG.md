@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+Phase 3: the Postgres schema.
+
+- `schema/postgres`: `migrations/0001_baseline.sql` (the Go SDK's schema),
+  `concurrent_indexes.json`, `retired.json`, and `catalog.json`, which
+  `tools/catalog` reads from Postgres. CI checks it on Postgres 16, 17 and 18.
+- `schema/postgres/README.md`: how implementations migrate and validate.
+- Vectors: `index_definition`, `column_default` (catalog normalization).
+- `tools/gen -part schema`: migrations, concurrent indexes and the catalog as
+  Go or TypeScript source.
+
 ## 0.2.0
 
 Phase 2: the failure path and the query mappings.

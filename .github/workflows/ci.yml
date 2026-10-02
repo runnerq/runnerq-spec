@@ -25,9 +25,37 @@ jobs:
       - run: go test ./... -count=1
       - name: Vectors are in canonical layout
         run: go test ./verify -update -count=1 && git diff --exit-code
-      - name: Generated TypeScript passes tsc and Prettier
+      - name: Generated TypeScript passes tsc (and Prettier, for constants)
         run: |
           mkdir -p /tmp/gen && go run ./tools/gen -lang ts -out /tmp/gen/spec.ts
+          go run ./tools/gen -lang ts -part schema -out /tmp/gen/schema.ts
           cd /tmp/gen && npm init -y >/dev/null && npm i -s typescript@5 prettier@3
-          npx tsc --strict --noEmit --target ES2022 spec.ts
+          npx tsc --strict --noEmit --target ES2022 spec.ts schema.ts
           npx prettier --check spec.ts
+
+  catalog:
+    # catalog.json must be what the migrations produce, on every supported
+    # Postgres; migrations must also be safe to re-run (the tool runs them twice).
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        postgres: [16, 17, 18]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/catalog/go.mod
+      - name: catalog.json is current
+        working-directory: tools/catalog
+        run: go vet . && go run . -dsn postgres://postgres:test@localhost:5432/postgres
