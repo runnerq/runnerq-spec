@@ -1440,7 +1440,7 @@
       "x-go-prefix": "Cascade"
     },
     "DeleteCascade": {
-      "description": "Delete removes a finished root with its whole tree.",
+      "description": "Delete removes a finished root with its whole tree, the only cascade and the default.",
       "type": "string",
       "enum": [
         "tree"
@@ -1623,8 +1623,7 @@
       },
       "required": [
         "command_id",
-        "target",
-        "cascade"
+        "target"
       ],
       "additionalProperties": false
     },

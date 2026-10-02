@@ -793,7 +793,14 @@ func tsSpecs(p *protocolDoc, specImport string) ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString(p.header())
 	fmt.Fprintf(&b, "import type { Spec } from %q;\n\n", specImport)
-	b.WriteString("/** A decode spec per object definition. */\nexport const specs: Record<string, Spec> = {\n")
+	var names []string
+	for _, m := range p.defs.members {
+		if m.val.str("type") == "object" && m.val.get("properties") != nil {
+			names = append(names, strconv.Quote(m.key))
+		}
+	}
+	fmt.Fprintf(&b, "/** The definitions with a decode spec. */\nexport type SpecName =\n  | %s;\n\n", strings.Join(names, "\n  | "))
+	b.WriteString("/** A decode spec per object definition. */\nexport const specs: Record<SpecName, Spec> = {\n")
 	for _, m := range p.defs.members {
 		if m.val.str("type") == "object" && m.val.get("properties") != nil {
 			fmt.Fprintf(&b, "  %s: %s,\n", m.key, p.tsSpec(m.val, true))
@@ -807,7 +814,7 @@ func (p *protocolDoc) tsSpec(s *node, top bool) string {
 	if ref := s.refName(); ref != "" && !top {
 		d := p.def(ref)
 		if d.str("type") == "object" && d.get("properties") != nil {
-			return fmt.Sprintf("() => specs.%s!", ref)
+			return fmt.Sprintf("() => specs.%s", ref)
 		}
 		return p.tsSpec(d, false)
 	}
