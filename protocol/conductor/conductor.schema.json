@@ -478,7 +478,7 @@
     },
     "Sort": {
       "type": "object",
-      "description": "Orders a query by one advertised field; agents add the id as a tiebreaker.",
+      "description": "One ordering of a query, by an advertised field; agents add the id as a tiebreaker.",
       "properties": {
         "field": {
           "type": "string"
@@ -590,7 +590,7 @@
     },
     "GetRequest": {
       "type": "object",
-      "description": "Fetches one activity.",
+      "description": "A request for one activity.",
       "properties": {
         "id": {
           "type": "string"
@@ -610,7 +610,7 @@
     },
     "CountRequest": {
       "type": "object",
-      "description": "Counts activities matching a filter.",
+      "description": "A request to count the activities matching a filter.",
       "properties": {
         "filter": {
           "$ref": "#/$defs/Filter"
@@ -640,7 +640,7 @@
     },
     "StepsRequest": {
       "type": "object",
-      "description": "Lists an activity's steps.",
+      "description": "A request for an activity's steps.",
       "properties": {
         "activity_id": {
           "type": "string"
@@ -669,7 +669,7 @@
     },
     "ResultRequest": {
       "type": "object",
-      "description": "Fetches an activity's result.",
+      "description": "A request for an activity's result.",
       "properties": {
         "activity_id": {
           "type": "string"
@@ -682,7 +682,7 @@
     },
     "TreeRequest": {
       "type": "object",
-      "description": "Fetches the tree an activity belongs to; id may be any activity in it.",
+      "description": "A request for the tree an activity belongs to; id may be any activity in it.",
       "properties": {
         "id": {
           "type": "string"
@@ -730,7 +730,7 @@
     },
     "Bucket": {
       "type": "object",
-      "description": "Splits an aggregate into time buckets.",
+      "description": "The time buckets an aggregate is split into.",
       "properties": {
         "field": {
           "type": "string",
@@ -766,7 +766,7 @@
       "x-go-prefix": "Metric"
     },
     "DurationField": {
-      "description": "queue: created or scheduled to first start; run: last attempt's start to completion; total: created to completion.",
+      "description": "Which duration: queue, from created or scheduled to the first start; run, from the last attempt's start to completion; total, from created to completion.",
       "type": "string",
       "enum": [
         "queue",
@@ -802,7 +802,7 @@
     },
     "AggregateRequest": {
       "type": "object",
-      "description": "Groups and measures activities.",
+      "description": "A request to group and measure activities.",
       "properties": {
         "filter": {
           "$ref": "#/$defs/Filter"
@@ -1260,7 +1260,7 @@
     },
     "ExecutorCounters": {
       "type": "object",
-      "description": "Activity outcomes since the executor started.",
+      "description": "The counts of an executor's activity outcomes since it started.",
       "properties": {
         "claimed": {
           "type": "integer",
@@ -1392,7 +1392,7 @@
     },
     "Empty": {
       "type": "object",
-      "description": "No data.",
+      "description": "The data of a message that has none.",
       "properties": {},
       "required": [],
       "additionalProperties": false
@@ -1432,7 +1432,7 @@
       "additionalProperties": false
     },
     "CancelCascade": {
-      "description": "children (the default) also cancels non-terminal descendants.",
+      "description": "How far a cancel reaches: children (the default) also cancels non-terminal descendants, none only the targets.",
       "type": "string",
       "enum": [
         "children",
@@ -1441,7 +1441,7 @@
       "x-go-prefix": "Cascade"
     },
     "DeleteCascade": {
-      "description": "Delete removes a finished root with its whole tree, the only cascade and the default.",
+      "description": "How far a delete reaches: tree, the only cascade and the default, removes a finished root with its whole tree.",
       "type": "string",
       "enum": [
         "tree"
@@ -1453,7 +1453,7 @@
     },
     "CancelRequest": {
       "type": "object",
-      "description": "activities.cancel: cancel non-terminal activities. Each command accepts only its own fields.",
+      "description": "The request of activities.cancel, which cancels non-terminal activities. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1481,7 +1481,7 @@
     },
     "RetryRequest": {
       "type": "object",
-      "description": "activities.retry: run failed, dead-lettered or cancelled activities again, keeping their checkpoints. Each command accepts only its own fields.",
+      "description": "The request of activities.retry, which runs failed, dead-lettered or cancelled activities again, keeping their checkpoints. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1509,7 +1509,7 @@
     },
     "RunNowRequest": {
       "type": "object",
-      "description": "activities.run_now: make scheduled or waiting activities runnable now. Each command accepts only its own fields.",
+      "description": "The request of activities.run_now, which makes scheduled or waiting activities runnable now. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1534,7 +1534,7 @@
     },
     "RescheduleRequest": {
       "type": "object",
-      "description": "activities.reschedule: move a scheduled activity's time. Each command accepts only its own fields.",
+      "description": "The request of activities.reschedule, which moves a scheduled activity's time. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1564,7 +1564,7 @@
     },
     "SetPriorityRequest": {
       "type": "object",
-      "description": "activities.set_priority: change non-terminal activities' priority. Each command accepts only its own fields.",
+      "description": "The request of activities.set_priority, which changes non-terminal activities' priority. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1596,7 +1596,7 @@
     },
     "DeleteRequest": {
       "type": "object",
-      "description": "activities.delete: delete finished roots with their trees and history. Each command accepts only its own fields.",
+      "description": "The request of activities.delete, which deletes finished roots with their trees and history. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1624,7 +1624,7 @@
     },
     "SignalRequest": {
       "type": "object",
-      "description": "activities.signal: deliver a signal, waking the activity if it waits. Each command accepts only its own fields.",
+      "description": "The request of activities.signal, which delivers a signal, waking the activity if it waits. Each command accepts only its own fields.",
       "properties": {
         "command_id": {
           "type": "string",
@@ -1737,7 +1737,7 @@
     },
     "EventsSubscribe": {
       "type": "object",
-      "description": "Starts an event stream; without after_cursor it starts at the end of the log.",
+      "description": "A request to start an event stream; without after_cursor it starts at the end of the log.",
       "properties": {
         "filter": {
           "$ref": "#/$defs/Filter"
@@ -1767,18 +1767,18 @@
           "type": "string"
         },
         "cursor": {
-          "type": "string"
+          "type": "string",
+          "description": "Absent when the log is empty."
         }
       },
       "required": [
-        "subscription_id",
-        "cursor"
+        "subscription_id"
       ],
       "additionalProperties": false
     },
     "EventsUnsubscribe": {
       "type": "object",
-      "description": "Ends a subscription.",
+      "description": "A request to end a subscription.",
       "properties": {
         "subscription_id": {
           "type": "string"
@@ -1815,7 +1815,7 @@
     },
     "StreamGap": {
       "type": "object",
-      "description": "Events after since_cursor may have been lost; re-query them with events.list.",
+      "description": "A notice that events after since_cursor may have been lost; re-query them with events.list.",
       "properties": {
         "subscription_id": {
           "type": "string"

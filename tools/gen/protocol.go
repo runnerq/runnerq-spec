@@ -673,7 +673,7 @@ func tsProtocol(p *protocolDoc, prefix string, roots ...string) ([]byte, error) 
 		for _, op := range p.ops {
 			fmt.Fprintf(&b, "  %s: { args: %s; result: %s };\n", op.str("name"), p.argsName(op), p.tsType(op.get("result")))
 		}
-		b.WriteString("}\n")
+		b.WriteString("}\n\n/** Every message type. */\nexport type MessageType = keyof Messages;\n")
 	}
 	return bytes.TrimRight(b.Bytes(), "\n"), nil
 }
