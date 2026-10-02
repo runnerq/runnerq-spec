@@ -1,0 +1,5 @@
+{
+  "operation": "DequeueBatchEncoded",
+  "args": {"workerIDPrefix":"workeridprefix-1","limit":100,"timeout":30000000000,"activityTypes":["activitytypes-1"],"serializations":["serializations-1"]},
+  "result": [{"Activity":{"ID":"0192f3a4-5b6c-7d8e-9f01-00000000006a","ActivityType":"SendEmail","Payload":{"order":42,"items":["a","b"]},"Priority":2,"MaxRetries":5,"RetryCount":1,"TimeoutSeconds":300,"RetryDelaySeconds":60,"MaxRetryDelaySeconds":3600,"ScheduledAt":"2026-10-02T12:01:47.123456789Z","Metadata":{"region":"eu"},"IdempotencyKey":{"Key":"key-1","Behavior":1},"CreatedAt":"2026-10-02T12:01:48.123456789Z","ParentActivityID":"0192f3a4-5b6c-7d8e-9f01-00000000006d","RootActivityID":"0192f3a4-5b6c-7d8e-9f01-00000000006e","Depth":1,"Serialization":"json-v1"},"LeaseID":"leaseid-1","Attempt":2,"LeaseDeadline":"2026-10-02T12:01:51.123456789Z"}]
+}

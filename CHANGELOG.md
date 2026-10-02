@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+Phase 4a: the storage protocol.
+
+- `protocol/storage/storage.schema.json`: every storage operation's arguments
+  and result, and the types they carry, with the data plane's bounds as JSON
+  Schema constraints. `executor_report.schema.json`: worker heartbeats.
+- One example per operation, and one report, encoded by the Go adapter;
+  `verify` checks them against the schemas.
+- `tools/gen -part storage` (Go wire types, Go client, Go server dispatch with
+  validation, TypeScript types) and `-part executor-report`. They replace the
+  adapter's `tools/generate.py`.
+
 ## 0.3.0
 
 Phase 3: the Postgres schema.

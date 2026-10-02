@@ -1,0 +1,5 @@
+{
+  "operation": "Enqueue",
+  "args": {"activity":{"ID":"0192f3a4-5b6c-7d8e-9f01-000000000002","ActivityType":"SendEmail","Payload":{"order":42,"items":["a","b"]},"Priority":2,"MaxRetries":5,"RetryCount":1,"TimeoutSeconds":300,"RetryDelaySeconds":60,"MaxRetryDelaySeconds":3600,"ScheduledAt":"2026-10-02T12:00:03.123456789Z","Metadata":{"region":"eu"},"IdempotencyKey":{"Key":"key-1","Behavior":1},"CreatedAt":"2026-10-02T12:00:04.123456789Z","ParentActivityID":"0192f3a4-5b6c-7d8e-9f01-000000000005","RootActivityID":"0192f3a4-5b6c-7d8e-9f01-000000000006","Depth":1,"Serialization":"json-v1"}},
+  "result": null
+}

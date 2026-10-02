@@ -1,0 +1,5 @@
+{
+  "operation": "YieldForResult",
+  "args": {"waiterID":"0192f3a4-5b6c-7d8e-9f01-000000000066","resultID":"0192f3a4-5b6c-7d8e-9f01-000000000067","producerID":"0192f3a4-5b6c-7d8e-9f01-000000000068","wakeAt":"2026-10-02T12:01:45.123456789Z","workerID":"workerid-1","kind":"run","step":"run:charge"},
+  "result": null
+}

@@ -1,0 +1,5 @@
+{
+  "operation": "SignalActivityEncoded",
+  "args": {"activityID":"0192f3a4-5b6c-7d8e-9f01-000000000071","signalID":"0192f3a4-5b6c-7d8e-9f01-000000000072","name":"approve","payload":{"order":42,"items":["a","b"]},"serialization":"json-v1"},
+  "result": null
+}

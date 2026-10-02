@@ -1,0 +1,5 @@
+{
+  "operation": "GetActivitySteps",
+  "args": {"ownerActivityID":"0192f3a4-5b6c-7d8e-9f01-00000000002d"},
+  "result": [{"Kind":"run","Name":"approve","State":0,"Data":{"order":42,"items":["a","b"]},"CreatedAt":"2026-10-02T12:00:46.123456789Z"}]
+}

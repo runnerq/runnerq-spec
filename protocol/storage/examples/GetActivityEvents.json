@@ -1,0 +1,5 @@
+{
+  "operation": "GetActivityEvents",
+  "args": {"activityID":"0192f3a4-5b6c-7d8e-9f01-00000000002a","limit":100},
+  "result": [{"activity_id":"0192f3a4-5b6c-7d8e-9f01-00000000002b","timestamp":"2026-10-02T12:00:44.123456789Z","event_type":"Completed","worker_id":"workerid-1","detail":{"order":42,"items":["a","b"]}}]
+}

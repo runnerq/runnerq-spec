@@ -1,0 +1,5 @@
+{
+  "operation": "EnqueueForWorker",
+  "args": {"a":{"ID":"0192f3a4-5b6c-7d8e-9f01-000000000056","ActivityType":"SendEmail","Payload":{"order":42,"items":["a","b"]},"Priority":2,"MaxRetries":5,"RetryCount":1,"TimeoutSeconds":300,"RetryDelaySeconds":60,"MaxRetryDelaySeconds":3600,"ScheduledAt":"2026-10-02T12:01:27.123456789Z","Metadata":{"region":"eu"},"IdempotencyKey":{"Key":"key-1","Behavior":1},"CreatedAt":"2026-10-02T12:01:28.123456789Z","ParentActivityID":"0192f3a4-5b6c-7d8e-9f01-000000000059","RootActivityID":"0192f3a4-5b6c-7d8e-9f01-00000000005a","Depth":1,"Serialization":"json-v1"},"ownerID":"0192f3a4-5b6c-7d8e-9f01-00000000005b","workerID":"workerid-1"},
+  "result": null
+}

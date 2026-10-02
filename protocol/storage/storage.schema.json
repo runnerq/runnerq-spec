@@ -1,0 +1,1805 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/runnerq/runnerq-spec/protocol/storage/storage.schema.json",
+  "title": "RunnerQ storage protocol, version 1",
+  "description": "Storage operations a worker's adapter calls on the data plane: POST /v1/queues/{queue}/{operation} with RunnerQ-Storage-Version: 1. See README.md. String lengths are UTF-8 bytes. A nullable field may be absent; absent and null mean the same. Required lists what a Go encoder always sends.",
+  "x-version": 1,
+  "$defs": {
+    "UUID": {
+      "description": "A UUID, lowercase in the 8-4-4-4-12 form. Absent or null decodes as the nil UUID.",
+      "type": "string",
+      "format": "uuid",
+      "x-go-type": "uuid.UUID"
+    },
+    "Timestamp": {
+      "description": "RFC 3339 with up to nanosecond precision (Go's time.RFC3339Nano). The zero time is 0001-01-01T00:00:00Z.",
+      "type": "string",
+      "format": "date-time",
+      "x-go-type": "time.Time"
+    },
+    "Duration": {
+      "description": "A duration in integer nanoseconds.",
+      "type": "integer",
+      "x-go-type": "time.Duration"
+    },
+    "RawJSON": {
+      "description": "Any JSON value, carried as is: a payload, result or detail. Absent and null are the same.",
+      "x-go-type": "json.RawMessage"
+    },
+    "Priority": {
+      "description": "1 low, 2 normal, 3 high, 4 critical.",
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "x-go-type": "storage.ActivityPriority"
+    },
+    "IdempotencyBehavior": {
+      "description": "0 allow reuse, 1 return existing, 2 allow reuse on failure, 3 no reuse.",
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "x-go-type": "storage.IdempotencyBehavior"
+    },
+    "ResultState": {
+      "description": "0 ok, 1 error.",
+      "type": "integer",
+      "enum": [
+        0,
+        1
+      ],
+      "x-go-type": "storage.ResultState"
+    },
+    "ErrorCode": {
+      "description": "A storage error kind's name (constants.json storage_error_kind). Clients decode the code, not the HTTP status; an unknown code is a configuration error.",
+      "type": "string",
+      "enum": [
+        "unavailable",
+        "conflict",
+        "not_found",
+        "internal",
+        "serialization",
+        "configuration",
+        "timeout",
+        "duplicate_activity",
+        "idempotency_conflict",
+        "claim_lost",
+        "checkpoint_conflict",
+        "invalid_argument",
+        "unsupported"
+      ]
+    },
+    "ErrorBody": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "field": {
+          "description": "The input an invalid_argument or unsupported error is about.",
+          "type": "string",
+          "x-omitempty": true
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "ResponseBody": {
+      "description": "Every response body: result on success (HTTP 200), error otherwise. Operations without a result return null.",
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActivityResult": {
+      "type": "object",
+      "x-go-type": "storage.ActivityResult",
+      "properties": {
+        "Data": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "State": {
+          "$ref": "#/$defs/ResultState"
+        },
+        "Serialization": {
+          "description": "Data's encoding; empty means json-v1.",
+          "type": "string",
+          "maxLength": 64,
+          "x-omitempty": true
+        }
+      },
+      "required": [
+        "State"
+      ],
+      "additionalProperties": false
+    },
+    "QueuedActivity": {
+      "type": "object",
+      "x-go-type": "storage.QueuedActivity",
+      "properties": {
+        "ID": {
+          "$ref": "#/$defs/UUID",
+          "not": {
+            "const": "00000000-0000-0000-0000-000000000000"
+          }
+        },
+        "ActivityType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "Payload": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "Priority": {
+          "$ref": "#/$defs/Priority"
+        },
+        "MaxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "x-go-type": "uint32"
+        },
+        "RetryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "x-go-type": "uint32"
+        },
+        "TimeoutSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "uint64",
+          "maximum": 315360000
+        },
+        "RetryDelaySeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "uint64",
+          "maximum": 315360000
+        },
+        "MaxRetryDelaySeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "uint64",
+          "maximum": 315360000
+        },
+        "ScheduledAt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Metadata": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "IdempotencyKey": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IdempotencyKeyConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "ParentActivityID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "RootActivityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "Depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767,
+          "x-go-type": "uint16"
+        },
+        "Serialization": {
+          "description": "The payload's encoding; empty means json-v1.",
+          "type": "string",
+          "maxLength": 64,
+          "x-omitempty": true
+        }
+      },
+      "required": [
+        "ID",
+        "ActivityType",
+        "Priority",
+        "MaxRetries",
+        "RetryCount",
+        "TimeoutSeconds",
+        "RetryDelaySeconds",
+        "MaxRetryDelaySeconds",
+        "CreatedAt",
+        "RootActivityID",
+        "Depth"
+      ],
+      "additionalProperties": false
+    },
+    "IdempotencyKeyConfig": {
+      "type": "object",
+      "x-go-type": "storage.IdempotencyKeyConfig",
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Behavior": {
+          "$ref": "#/$defs/IdempotencyBehavior"
+        }
+      },
+      "required": [
+        "Key",
+        "Behavior"
+      ],
+      "additionalProperties": false
+    },
+    "FailureKind": {
+      "type": "object",
+      "x-go-type": "storage.FailureKind",
+      "properties": {
+        "Retryable": {
+          "type": "boolean"
+        },
+        "Reason": {
+          "type": "string"
+        },
+        "IsTimeout": {
+          "type": "boolean"
+        },
+        "Details": {
+          "$ref": "#/$defs/RawJSON",
+          "x-omitempty": true
+        }
+      },
+      "required": [
+        "Retryable",
+        "Reason",
+        "IsTimeout"
+      ],
+      "additionalProperties": false
+    },
+    "RetentionPolicy": {
+      "type": "object",
+      "x-go-type": "storage.RetentionPolicy",
+      "properties": {
+        "Completed": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0
+        },
+        "Failed": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "Completed",
+        "Failed"
+      ],
+      "additionalProperties": false
+    },
+    "IdempotencyResult": {
+      "type": "object",
+      "x-go-type": "storage.IdempotencyResult",
+      "properties": {
+        "ExistingID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "ExistingParentID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "ExistingID"
+      ],
+      "additionalProperties": false
+    },
+    "ActivitySnapshot": {
+      "type": "object",
+      "x-go-type": "storage.ActivitySnapshot",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/UUID",
+          "x-go-name": "ID"
+        },
+        "activity_type": {
+          "type": "string",
+          "x-go-name": "ActivityType"
+        },
+        "payload": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "priority": {
+          "type": "integer",
+          "x-go-type": "int"
+        },
+        "status": {
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp",
+          "x-go-name": "CreatedAt"
+        },
+        "scheduled_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "ScheduledAt",
+          "x-omitempty": true
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "StartedAt",
+          "x-omitempty": true
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "CompletedAt",
+          "x-omitempty": true
+        },
+        "current_worker_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "CurrentWorkerID",
+          "x-omitempty": true
+        },
+        "last_worker_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "LastWorkerID",
+          "x-omitempty": true
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "x-go-type": "uint32",
+          "x-go-name": "RetryCount"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "x-go-type": "uint32",
+          "x-go-name": "MaxRetries"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "uint64",
+          "x-go-name": "TimeoutSeconds"
+        },
+        "retry_delay_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "uint64",
+          "x-go-name": "RetryDelaySeconds"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "LastError",
+          "x-omitempty": true
+        },
+        "last_error_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "LastErrorAt",
+          "x-omitempty": true
+        },
+        "status_updated_at": {
+          "$ref": "#/$defs/Timestamp",
+          "x-go-name": "StatusUpdatedAt"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-omitempty": true
+        },
+        "lease_deadline_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "x-go-type": "int64"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "LeaseDeadlineMS",
+          "x-omitempty": true
+        },
+        "processing_member": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "ProcessingMember",
+          "x-omitempty": true
+        },
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "IdempotencyKey",
+          "x-omitempty": true
+        },
+        "parent_activity_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "ParentActivityID",
+          "x-omitempty": true
+        },
+        "root_activity_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "RootActivityID",
+          "x-omitempty": true
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "x-go-type": "uint16"
+        }
+      },
+      "required": [
+        "id",
+        "activity_type",
+        "priority",
+        "status",
+        "created_at",
+        "retry_count",
+        "max_retries",
+        "timeout_seconds",
+        "retry_delay_seconds",
+        "status_updated_at",
+        "depth"
+      ],
+      "additionalProperties": false
+    },
+    "ActivityEvent": {
+      "type": "object",
+      "x-go-type": "storage.ActivityEvent",
+      "properties": {
+        "activity_id": {
+          "$ref": "#/$defs/UUID",
+          "x-go-name": "ActivityID"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "event_type": {
+          "type": "string",
+          "x-go-name": "EventType",
+          "description": "A stored event type; see vectors/canonical_event.json."
+        },
+        "worker_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "WorkerID",
+          "x-omitempty": true
+        },
+        "detail": {
+          "$ref": "#/$defs/RawJSON",
+          "x-omitempty": true
+        }
+      },
+      "required": [
+        "activity_id",
+        "timestamp",
+        "event_type"
+      ],
+      "additionalProperties": false
+    },
+    "StepRecord": {
+      "type": "object",
+      "x-go-type": "storage.StepRecord",
+      "properties": {
+        "Kind": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "State": {
+          "$ref": "#/$defs/ResultState"
+        },
+        "Data": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "CreatedAt": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "Kind",
+        "Name",
+        "State",
+        "CreatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "DeadLetterRecord": {
+      "type": "object",
+      "x-go-type": "storage.DeadLetterRecord",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ActivitySnapshot"
+        },
+        "error": {
+          "type": "string"
+        },
+        "failed_at": {
+          "$ref": "#/$defs/Timestamp",
+          "x-go-name": "FailedAt"
+        }
+      },
+      "required": [
+        "activity",
+        "error",
+        "failed_at"
+      ],
+      "additionalProperties": false
+    },
+    "DequeuedActivity": {
+      "type": "object",
+      "x-go-type": "storage.DequeuedActivity",
+      "properties": {
+        "Activity": {
+          "$ref": "#/$defs/QueuedActivity"
+        },
+        "LeaseID": {
+          "type": "string"
+        },
+        "Attempt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "x-go-type": "uint32"
+        },
+        "LeaseDeadline": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "Activity",
+        "LeaseID",
+        "Attempt",
+        "LeaseDeadline"
+      ],
+      "additionalProperties": false
+    },
+    "GetResultArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "activityID"
+      ],
+      "additionalProperties": false
+    },
+    "EnqueueArgs": {
+      "type": "object",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/QueuedActivity"
+        }
+      },
+      "required": [
+        "activity"
+      ],
+      "additionalProperties": false
+    },
+    "DequeueArgs": {
+      "type": "object",
+      "properties": {
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "timeout": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "maximum": 86400000000000,
+          "x-server-clamp": 25000000000
+        },
+        "activityTypes": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "workerID",
+        "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "AckSuccessArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "result": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "activityID",
+        "workerID"
+      ],
+      "additionalProperties": false
+    },
+    "AckFailureArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "failure": {
+          "$ref": "#/$defs/FailureKind"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "activityID",
+        "failure",
+        "workerID"
+      ],
+      "additionalProperties": false
+    },
+    "ProcessScheduledArgs": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "RequeueExpiredArgs": {
+      "type": "object",
+      "properties": {
+        "batchSize": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "batchSize"
+      ],
+      "additionalProperties": false
+    },
+    "YieldArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "wakeAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "kind": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "activityID",
+        "wakeAt",
+        "workerID",
+        "kind",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "ExtendLeaseArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "extendBy": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "maximum": 86400000000000
+        }
+      },
+      "required": [
+        "activityID",
+        "extendBy"
+      ],
+      "additionalProperties": false
+    },
+    "StoreResultArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "ownerActivityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "result": {
+          "$ref": "#/$defs/ActivityResult"
+        },
+        "step": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "activityID",
+        "ownerActivityID",
+        "result",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "WakeWaitingArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "activityID"
+      ],
+      "additionalProperties": false
+    },
+    "SignalActivityArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "signalID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "name": {
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/RawJSON"
+        }
+      },
+      "required": [
+        "activityID",
+        "signalID",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "LookupIdempotencyActivityIDArgs": {
+      "type": "object",
+      "properties": {
+        "idempotencyKey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotencyKey"
+      ],
+      "additionalProperties": false
+    },
+    "CleanupExpiredArgs": {
+      "type": "object",
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/RetentionPolicy"
+        },
+        "batchSize": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "policy",
+        "batchSize"
+      ],
+      "additionalProperties": false
+    },
+    "EnqueueIdempotentArgs": {
+      "type": "object",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/QueuedActivity",
+          "x-go-pointer": true
+        }
+      },
+      "required": [
+        "activity"
+      ],
+      "additionalProperties": false
+    },
+    "RecordSpawnLinkedArgs": {
+      "type": "object",
+      "properties": {
+        "childID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "parentID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "childID",
+        "parentID"
+      ],
+      "additionalProperties": false
+    },
+    "GetActivityArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "activityID"
+      ],
+      "additionalProperties": false
+    },
+    "GetActivityEventsArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "limit": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "activityID",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "GetActivityStepsArgs": {
+      "type": "object",
+      "properties": {
+        "ownerActivityID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "ownerActivityID"
+      ],
+      "additionalProperties": false
+    },
+    "GetChildrenArgs": {
+      "type": "object",
+      "properties": {
+        "parentID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "offset": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "parentID",
+        "offset",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "GetSubtreeArgs": {
+      "type": "object",
+      "properties": {
+        "rootID": {
+          "$ref": "#/$defs/UUID"
+        }
+      },
+      "required": [
+        "rootID"
+      ],
+      "additionalProperties": false
+    },
+    "ListDeadLetterArgs": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "required": [
+        "offset",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "DequeueBatchArgs": {
+      "type": "object",
+      "properties": {
+        "workerIDPrefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "limit": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "timeout": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "maximum": 86400000000000,
+          "x-server-clamp": 25000000000
+        },
+        "activityTypes": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "workerIDPrefix",
+        "limit",
+        "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "ExtendLeaseForWorkerArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "extendBy": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "maximum": 86400000000000
+        }
+      },
+      "required": [
+        "activityID",
+        "workerID",
+        "extendBy"
+      ],
+      "additionalProperties": false
+    },
+    "StoreCheckpointArgs": {
+      "type": "object",
+      "properties": {
+        "resultID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "ownerID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "result": {
+          "$ref": "#/$defs/ActivityResult"
+        },
+        "step": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resultID",
+        "ownerID",
+        "workerID",
+        "result",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "EnqueueForWorkerArgs": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/QueuedActivity"
+        },
+        "ownerID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "a",
+        "ownerID",
+        "workerID"
+      ],
+      "additionalProperties": false
+    },
+    "EnqueueIdempotentForWorkerArgs": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/QueuedActivity",
+          "x-go-pointer": true
+        },
+        "ownerID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "ownerID",
+        "workerID",
+        "a"
+      ],
+      "additionalProperties": false
+    },
+    "RegisterDependencyArgs": {
+      "type": "object",
+      "properties": {
+        "waiterID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "resultID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "waiterID",
+        "resultID",
+        "workerID"
+      ],
+      "additionalProperties": false
+    },
+    "YieldForResultArgs": {
+      "type": "object",
+      "properties": {
+        "waiterID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "resultID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "producerID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wakeAt": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "kind": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "waiterID",
+        "resultID",
+        "wakeAt",
+        "workerID",
+        "kind",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "DequeueBatchEncodedArgs": {
+      "type": "object",
+      "properties": {
+        "workerIDPrefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "limit": {
+          "type": "integer",
+          "x-go-type": "int",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "timeout": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "maximum": 86400000000000,
+          "x-server-clamp": 25000000000
+        },
+        "activityTypes": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "serializations": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "maxItems": 8
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "workerIDPrefix",
+        "limit",
+        "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "AckSuccessEncodedArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "result": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "serialization": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "workerID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "activityID",
+        "serialization",
+        "workerID"
+      ],
+      "additionalProperties": false
+    },
+    "SignalActivityEncodedArgs": {
+      "type": "object",
+      "properties": {
+        "activityID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "signalID": {
+          "$ref": "#/$defs/UUID"
+        },
+        "name": {
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/RawJSON"
+        },
+        "serialization": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "activityID",
+        "signalID",
+        "name",
+        "serialization"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "x-operations": [
+    {
+      "name": "GetResult",
+      "x-go-interface": "ResultStorage",
+      "args": "#/$defs/GetResultArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ActivityResult"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Enqueue",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/EnqueueArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "Dequeue",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/DequeueArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/QueuedActivity"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AckSuccess",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/AckSuccessArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "AckFailure",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/AckFailureArgs",
+      "result": {
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "ProcessScheduled",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/ProcessScheduledArgs",
+      "result": {
+        "type": "integer",
+        "minimum": 0,
+        "x-go-type": "uint64"
+      }
+    },
+    {
+      "name": "RequeueExpired",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/RequeueExpiredArgs",
+      "result": {
+        "type": "integer",
+        "minimum": 0,
+        "x-go-type": "uint64"
+      }
+    },
+    {
+      "name": "Yield",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/YieldArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "ExtendLease",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/ExtendLeaseArgs",
+      "result": {
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "StoreResult",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/StoreResultArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "WakeWaiting",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/WakeWaitingArgs",
+      "result": {
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "SignalActivity",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/SignalActivityArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "LookupIdempotencyActivityID",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/LookupIdempotencyActivityIDArgs",
+      "result": {
+        "$ref": "#/$defs/UUID"
+      }
+    },
+    {
+      "name": "CleanupExpired",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/CleanupExpiredArgs",
+      "result": {
+        "type": "integer",
+        "minimum": 0,
+        "x-go-type": "uint64"
+      }
+    },
+    {
+      "name": "EnqueueIdempotent",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/EnqueueIdempotentArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IdempotencyResult"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecordSpawnLinked",
+      "x-go-interface": "QueueStorage",
+      "args": "#/$defs/RecordSpawnLinkedArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "GetActivity",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/GetActivityArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ActivitySnapshot"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetActivityEvents",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/GetActivityEventsArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ActivityEvent"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetActivitySteps",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/GetActivityStepsArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/StepRecord"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetChildren",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/GetChildrenArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ActivitySnapshot"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GetSubtree",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/GetSubtreeArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ActivitySnapshot"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListDeadLetter",
+      "x-go-interface": "storagetest.Reader",
+      "args": "#/$defs/ListDeadLetterArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/DeadLetterRecord"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DequeueBatch",
+      "x-go-interface": "BatchQueueStorage",
+      "args": "#/$defs/DequeueBatchArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/DequeuedActivity"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtendLeaseForWorker",
+      "x-go-interface": "AttemptLeaseStorage",
+      "args": "#/$defs/ExtendLeaseForWorkerArgs",
+      "result": {
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "StoreCheckpoint",
+      "x-go-interface": "CheckpointStorage",
+      "args": "#/$defs/StoreCheckpointArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "EnqueueForWorker",
+      "x-go-interface": "SpawnStorage",
+      "args": "#/$defs/EnqueueForWorkerArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "EnqueueIdempotentForWorker",
+      "x-go-interface": "SpawnStorage",
+      "args": "#/$defs/EnqueueIdempotentForWorkerArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IdempotencyResult"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegisterDependency",
+      "x-go-interface": "DependencyStorage",
+      "args": "#/$defs/RegisterDependencyArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "YieldForResult",
+      "x-go-interface": "DependencyStorage",
+      "args": "#/$defs/YieldForResultArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "DequeueBatchEncoded",
+      "x-go-interface": "EncodedStorage",
+      "args": "#/$defs/DequeueBatchEncodedArgs",
+      "result": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/DequeuedActivity"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AckSuccessEncoded",
+      "x-go-interface": "EncodedStorage",
+      "args": "#/$defs/AckSuccessEncodedArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "SignalActivityEncoded",
+      "x-go-interface": "EncodedStorage",
+      "args": "#/$defs/SignalActivityEncodedArgs",
+      "result": {
+        "type": "null"
+      }
+    },
+    {
+      "name": "WaitForResult",
+      "description": "Waits up to 25 seconds for the activity's result: null if there is none yet. The adapter implements it by hand (it waits longer than other calls).",
+      "x-go-interface": "ResultWaiter",
+      "args": "#/$defs/GetResultArgs",
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ActivityResult"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "x-go-generate": false
+    }
+  ]
+}

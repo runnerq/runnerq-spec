@@ -1,0 +1,5 @@
+{
+  "operation": "EnqueueIdempotentForWorker",
+  "args": {"a":{"ID":"0192f3a4-5b6c-7d8e-9f01-00000000005c","ActivityType":"SendEmail","Payload":{"order":42,"items":["a","b"]},"Priority":2,"MaxRetries":5,"RetryCount":1,"TimeoutSeconds":300,"RetryDelaySeconds":60,"MaxRetryDelaySeconds":3600,"ScheduledAt":"2026-10-02T12:01:33.123456789Z","Metadata":{"region":"eu"},"IdempotencyKey":{"Key":"key-1","Behavior":1},"CreatedAt":"2026-10-02T12:01:34.123456789Z","ParentActivityID":"0192f3a4-5b6c-7d8e-9f01-00000000005f","RootActivityID":"0192f3a4-5b6c-7d8e-9f01-000000000060","Depth":1,"Serialization":"json-v1"},"ownerID":"0192f3a4-5b6c-7d8e-9f01-000000000061","workerID":"workerid-1"},
+  "result": {"ExistingID":"0192f3a4-5b6c-7d8e-9f01-000000000062","ExistingParentID":"0192f3a4-5b6c-7d8e-9f01-000000000063"}
+}

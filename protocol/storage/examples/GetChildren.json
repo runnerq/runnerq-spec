@@ -1,0 +1,5 @@
+{
+  "operation": "GetChildren",
+  "args": {"parentID":"0192f3a4-5b6c-7d8e-9f01-00000000002f","offset":0,"limit":100},
+  "result": [{"id":"0192f3a4-5b6c-7d8e-9f01-000000000030","activity_type":"SendEmail","payload":{"order":42,"items":["a","b"]},"priority":2,"status":"running","created_at":"2026-10-02T12:00:49.123456789Z","scheduled_at":"2026-10-02T12:00:50.123456789Z","started_at":"2026-10-02T12:00:51.123456789Z","completed_at":"2026-10-02T12:00:52.123456789Z","current_worker_id":"currentworkerid-1","last_worker_id":"lastworkerid-1","retry_count":1,"max_retries":5,"timeout_seconds":300,"retry_delay_seconds":60,"metadata":{"region":"eu"},"last_error":"lasterror-1","last_error_at":"2026-10-02T12:00:53.123456789Z","status_updated_at":"2026-10-02T12:00:54.123456789Z","score":0.5,"lease_deadline_ms":7,"processing_member":"processingmember-1","idempotency_key":"idempotencykey-1","parent_activity_id":"0192f3a4-5b6c-7d8e-9f01-000000000037","root_activity_id":"0192f3a4-5b6c-7d8e-9f01-000000000038","depth":1}]
+}

@@ -48,7 +48,8 @@ func main() {
 	lang := flag.String("lang", "", "go or ts")
 	pkg := flag.String("pkg", "spec", "Go package name")
 	out := flag.String("out", "", "output file")
-	part := flag.String("part", "constants", "constants or schema")
+	part := flag.String("part", "constants", "constants, schema, storage or executor-report")
+	storageImport := flag.String("storage-import", "github.com/alob-mtc/runnerq-go/storage", "Go import path of runnerq-go's storage package")
 	flag.Parse()
 	if *out == "" {
 		fail(fmt.Errorf("-out is required"))
@@ -80,8 +81,36 @@ func main() {
 				err = fmt.Errorf("-lang must be go or ts")
 			}
 		}
+	case "storage":
+		var p *protocolDoc
+		if p, err = loadProtocol(*root, "protocol/storage/storage.schema.json"); err == nil {
+			switch *lang {
+			case "go-protocol":
+				src, err = goProtocol(p, *pkg, *storageImport)
+			case "go-client":
+				src, err = goClient(p, *pkg, *storageImport)
+			case "go-server":
+				src, err = goServer(p, *pkg, *storageImport)
+			case "ts":
+				src, err = tsProtocol(p, "storage")
+			default:
+				err = fmt.Errorf("-lang must be go-protocol, go-client, go-server or ts")
+			}
+		}
+	case "executor-report":
+		var p *protocolDoc
+		if p, err = loadProtocol(*root, "protocol/storage/executor_report.schema.json"); err == nil {
+			switch *lang {
+			case "go":
+				src, err = goTypes(p, *pkg)
+			case "ts":
+				src, err = tsProtocol(p, "")
+			default:
+				err = fmt.Errorf("-lang must be go or ts")
+			}
+		}
 	default:
-		err = fmt.Errorf("-part must be constants or schema")
+		err = fmt.Errorf("-part must be constants, schema, storage or executor-report")
 	}
 	if err != nil {
 		fail(err)

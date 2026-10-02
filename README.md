@@ -5,7 +5,8 @@ The language-neutral contract every RunnerQ implementation agrees on. It holds:
 - the constants they share;
 - golden vectors for the logic each SDK implements on its own;
 - the Postgres schema;
-- the wire protocols (later phase);
+- the storage protocol between workers and the data plane;
+- the conductor protocol between workers and the control plane (later phase);
 - a cross-language conformance suite (later phase).
 
 There is no runtime code here, only definitions, a generator and test data.
@@ -53,19 +54,22 @@ runnerq-spec/
 ├── schema/
 │   └── postgres/               migrations, concurrent indexes, catalog
 │                               (see its README)
+├── protocol/
+│   └── storage/                storage operations and worker reports, as
+│                               JSON Schema with examples (see its README)
 ├── serialization/
 │   ├── formats.md              json-v1, superjson-v1
 │   └── vectors/
 │       └── plain_json.json
 ├── verify/                     reference implementation; checks every vector
 └── tools/
-    ├── gen/                    constants and schema → Go / TypeScript source
+    ├── gen/                    constants, schema and protocols → Go / TypeScript
     └── catalog/                schema → catalog.json, from a real Postgres
 ```
 
 Later phases add these directories:
 - `schema/postgres/functions/`, possibly, for SQL state-transition functions.
-- `protocol/` for the storage, executor-report and conductor protocols as JSON Schema.
+- `protocol/conductor/` for the conductor protocol.
 - `conformance/` for data-driven scenarios and the mixed Go/TS fleet test.
 
 ## Vectors
@@ -98,7 +102,12 @@ go run ./tools/gen -lang go -pkg spec -out <file.go>                # constants
 go run ./tools/gen -lang ts -out <file.ts>
 go run ./tools/gen -lang go -pkg spec -part schema -out <file.go>   # Postgres schema
 go run ./tools/gen -lang ts -part schema -out <file.ts>
+go run ./tools/gen -part storage -lang go-protocol|go-client|go-server|ts -pkg <pkg> -out <file>
+go run ./tools/gen -part executor-report -lang go|ts -pkg <pkg> -out <file>
 ```
+
+The storage protocol's Go code refers to runnerq-go's storage types
+(`-storage-import`), which the schema names with `x-go-type`.
 
 Go names are PascalCase with Go initialisms (`SerializationJSON`); TypeScript
 names are camelCase (`serializationJson`). Enums become numbered constants in Go
@@ -133,7 +142,8 @@ force a v2.
 | 1 | Constants, pure-logic vectors, generator; both SDKs use the constants and test against the vectors | v0.1.0 |
 | 2 | Extract backoff and the retry decision into pure functions; vectors for them and the status and event mappings | v0.2.0 |
 | 3 | Schema: migrations, concurrent indexes and catalog; both SDKs migrate and validate from it | v0.3.0 |
-| 4 | Protocols: storage, executor reports, conductor; generated types replace `generate.py` and the hand copies | |
+| 4a | Storage protocol and executor reports; generated code replaces `generate.py` | v0.4.0 |
+| 4b | Conductor protocol; generated types replace the hand copies | |
 | 5 | Conformance scenarios, Go and TS drivers, mixed-fleet job, storaged protocol replay | |
 | 6 | Decide on SQL functions for state transitions | |
 
