@@ -67,3 +67,51 @@ jobs:
       - name: Conformance runner builds
         working-directory: tools/conformance
         run: go vet . && go build -o /dev/null .
+
+  conformance:
+    # The scenarios against both SDKs' main branches: each alone, then both
+    # on one database (the mixed fleet).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: runnerq_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DSN: postgres://postgres:test@localhost:5432/runnerq_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: runnerq/runnerq-go
+          path: sdk/go
+      - uses: actions/checkout@v4
+        with:
+          repository: runnerq/runnerq-ts
+          path: sdk/ts
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/conformance/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the drivers
+        run: |
+          go -C sdk/go build -o "$RUNNER_TEMP/godriver" ./internal/conformancedriver
+          (cd sdk/ts && npm ci --no-audit --no-fund && npm run build)
+      - name: Go
+        working-directory: tools/conformance
+        run: go run . -dsn "$DSN" -driver go="$RUNNER_TEMP/godriver"
+      - name: TypeScript
+        working-directory: tools/conformance
+        run: go run . -dsn "$DSN" -driver ts="node $GITHUB_WORKSPACE/sdk/ts/test/conformance-driver.mjs"
+      - name: Mixed fleet
+        working-directory: tools/conformance
+        run: go run . -v -dsn "$DSN" -driver go="$RUNNER_TEMP/godriver" -driver ts="node $GITHUB_WORKSPACE/sdk/ts/test/conformance-driver.mjs"
