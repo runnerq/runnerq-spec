@@ -8,6 +8,7 @@
   "$defs": {
     "ExecutorReport": {
       "type": "object",
+      "description": "A worker's heartbeat (PUT /v1/executors/{id}, with the store key) for RunnerQ Cloud's Fleet, in a conductor agent's shapes: its hello's sdk and executor, and its executor.report state.",
       "properties": {
         "sdk": {
           "$ref": "#/$defs/SDKInfo"
