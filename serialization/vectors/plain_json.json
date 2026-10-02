@@ -1,0 +1,16 @@
+{
+  "description": "PlainJSON(serialization, data) is the plain JSON a stored value shows outside its SDK (queries, the console). json-v1 and the empty serialization pass through. superjson-v1 gives the envelope's \"json\" member, SuperJSON's JSON-safe part without type metadata; data that is not an object with a \"json\" member passes through. Outputs compare as JSON values.",
+  "cases": [
+    { "name": "json-v1 passes through", "input": { "data": { "a": 1, "json": 2 }, "serialization": "json-v1" }, "output": { "a": 1, "json": 2 } },
+    { "name": "empty serialization is json-v1", "input": { "data": [1, "two", null], "serialization": "" }, "output": [1, "two", null] },
+    { "name": "superjson without meta", "input": { "data": { "json": { "a": 1 } }, "serialization": "superjson-v1" }, "output": { "a": 1 } },
+    { "name": "superjson Date keeps its JSON form", "input": { "data": { "json": { "at": "2026-10-02T00:00:00.000Z" }, "meta": { "values": { "at": ["Date"] } } }, "serialization": "superjson-v1" }, "output": { "at": "2026-10-02T00:00:00.000Z" } },
+    { "name": "superjson bigint keeps its JSON form", "input": { "data": { "json": { "n": "9007199254740993" }, "meta": { "values": { "n": ["bigint"] } } }, "serialization": "superjson-v1" }, "output": { "n": "9007199254740993" } },
+    { "name": "superjson Set at the top", "input": { "data": { "json": [1, 2], "meta": { "values": ["set"] } }, "serialization": "superjson-v1" }, "output": [1, 2] },
+    { "name": "superjson Map at the top", "input": { "data": { "json": [["a", 1]], "meta": { "values": ["map"] } }, "serialization": "superjson-v1" }, "output": [["a", 1]] },
+    { "name": "superjson string", "input": { "data": { "json": "text" }, "serialization": "superjson-v1" }, "output": "text" },
+    { "name": "superjson null", "input": { "data": { "json": null }, "serialization": "superjson-v1" }, "output": null },
+    { "name": "superjson that is not an object", "input": { "data": [1, 2], "serialization": "superjson-v1" }, "output": [1, 2] },
+    { "name": "superjson without a json member", "input": { "data": { "a": 1 }, "serialization": "superjson-v1" }, "output": { "a": 1 } }
+  ]
+}

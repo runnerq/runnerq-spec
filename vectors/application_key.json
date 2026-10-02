@@ -1,0 +1,18 @@
+{
+  "description": "ApplicationKey(stored, activity_type) recovers the key the application set from a stored idempotency key and the activity's type, as queries report it. Empty or step keys (\"rq:step:\" prefix) give \"\". A business key (\"rq:key:v2:\") decodes to its key only when it is canonical (re-encoding gives the same string) and its type matches; otherwise the stored value is returned. A legacy key \"<key>-<activity_type>\" with a non-empty key gives key. Anything else was written raw through the storage API and is returned as is.",
+  "cases": [
+    { "name": "business key, matching type", "input": { "activity_type": "Charge", "stored": "rq:key:v2:ODpvcmRlci00MkNoYXJnZQ" }, "output": "order-42" },
+    { "name": "business key, other type", "input": { "activity_type": "Refund", "stored": "rq:key:v2:ODpvcmRlci00MkNoYXJnZQ" }, "output": "rq:key:v2:ODpvcmRlci00MkNoYXJnZQ" },
+    { "name": "business key, UTF-8 key", "input": { "activity_type": "Charge", "stored": "rq:key:v2:MjrDqUNoYXJnZQ" }, "output": "é" },
+    { "name": "business key, padded base64 is not canonical", "input": { "activity_type": "Charge", "stored": "rq:key:v2:MjrDqUNoYXJnZQ==" }, "output": "rq:key:v2:MjrDqUNoYXJnZQ==" },
+    { "name": "business key, not base64", "input": { "activity_type": "Charge", "stored": "rq:key:v2:!!!" }, "output": "rq:key:v2:!!!" },
+    { "name": "business key, length past the end", "input": { "activity_type": "", "stored": "rq:key:v2:OTk6YWJj" }, "output": "rq:key:v2:OTk6YWJj" },
+    { "name": "legacy key", "input": { "activity_type": "Charge", "stored": "order-42-Charge" }, "output": "order-42" },
+    { "name": "legacy key with dashes", "input": { "activity_type": "Charge", "stored": "a-b-c-Charge" }, "output": "a-b-c" },
+    { "name": "legacy suffix with empty key", "input": { "activity_type": "Charge", "stored": "-Charge" }, "output": "-Charge" },
+    { "name": "type without separator", "input": { "activity_type": "Charge", "stored": "order42Charge" }, "output": "order42Charge" },
+    { "name": "raw storage key", "input": { "activity_type": "Charge", "stored": "external-key" }, "output": "external-key" },
+    { "name": "step key", "input": { "activity_type": "Charge", "stored": "rq:step:6ba7b810-9dad-11d1-80b4-00c04fd430c8:0192f3a4-5b6c-7d8e-9f01-23456789abcd:charge" }, "output": "" },
+    { "name": "empty", "input": { "activity_type": "Charge", "stored": "" }, "output": "" }
+  ]
+}

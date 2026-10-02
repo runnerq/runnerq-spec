@@ -1,0 +1,13 @@
+{
+  "description": "BusinessKey(key, activity_type) encodes an application idempotency key with its activity type: \"rq:key:v2:\" + unpadded standard base64 of the UTF-8 bytes of (decimal byte length of key) + \":\" + key + activity_type. The length prefix makes the split unambiguous. key and activity_type are non-empty.",
+  "cases": [
+    { "name": "ascii", "input": { "activity_type": "Charge", "key": "order-42" }, "output": "rq:key:v2:ODpvcmRlci00MkNoYXJnZQ" },
+    { "name": "length counts UTF-8 bytes", "input": { "activity_type": "Charge", "key": "é" }, "output": "rq:key:v2:MjrDqUNoYXJnZQ" },
+    { "name": "dash in key", "input": { "activity_type": "c", "key": "a-b" }, "output": "rq:key:v2:MzphLWJj" },
+    { "name": "dash in type", "input": { "activity_type": "b-c", "key": "a" }, "output": "rq:key:v2:MTphYi1j" },
+    { "name": "colon in key", "input": { "activity_type": "T", "key": "12:34" }, "output": "rq:key:v2:NToxMjozNFQ" },
+    { "name": "emoji", "input": { "activity_type": "Emoji", "key": "🙂" }, "output": "rq:key:v2:NDrwn5mCRW1vamk" },
+    { "name": "spaces kept", "input": { "activity_type": "SendEmail_v2", "key": "  padded  " }, "output": "rq:key:v2:MTA6ICBwYWRkZWQgIFNlbmRFbWFpbF92Mg" },
+    { "name": "no padding at any length", "input": { "activity_type": "Ab", "key": "x" }, "output": "rq:key:v2:MTp4QWI" }
+  ]
+}

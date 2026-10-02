@@ -1,0 +1,11 @@
+{
+  "description": "CheckpointID(activity_id, kind, name) is the RFC 9562 UUIDv5 (SHA-1) of the UTF-8 bytes kind + \":\" + name in the namespace activity_id, written lowercase. Checkpoints, durable sleeps and signal results are stored under it, so a signal a backend stores is the one the handler's WaitForSignal reads. activity_id may be given in either case; name is non-empty.",
+  "cases": [
+    { "name": "run step", "input": { "activity_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "kind": "run", "name": "charge" }, "output": "020e4a37-85b6-5ee4-a6c6-ce49b8c3fad7" },
+    { "name": "sleep", "input": { "activity_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "kind": "sleep", "name": "cool-off" }, "output": "ce237805-0333-5a9c-a595-2327739f1f3e" },
+    { "name": "signal", "input": { "activity_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd", "kind": "signal", "name": "approve" }, "output": "fe34f2c1-1ffc-5206-a431-a5834d712b9e" },
+    { "name": "unicode name", "input": { "activity_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd", "kind": "run", "name": "café ☕" }, "output": "602d2915-e184-5e7e-b8c3-77118252055d" },
+    { "name": "name with spaces and colons", "input": { "activity_id": "3f2b8c1e-7a4d-4e9b-8c6f-1d2e3f4a5b6c", "kind": "run", "name": "step 1: fetch" }, "output": "76f57bdf-db0b-5898-bbff-037ae57b1a58" },
+    { "name": "uppercase activity id", "input": { "activity_id": "6BA7B810-9DAD-11D1-80B4-00C04FD430C8", "kind": "run", "name": "charge" }, "output": "020e4a37-85b6-5ee4-a6c6-ce49b8c3fad7" }
+  ]
+}

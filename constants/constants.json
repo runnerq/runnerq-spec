@@ -1,0 +1,67 @@
+{
+  "constants": [
+    {
+      "name": "schema_advisory_lock_key",
+      "type": "int64",
+      "value": "5932734182207934753",
+      "doc": "The Postgres advisory lock every implementation holds while it creates, migrates or checks the schema (0x52554E4E45525121, \"RUNNERQ!\")."
+    },
+    {
+      "name": "work_channel_prefix",
+      "type": "string",
+      "value": "rq_w_",
+      "doc": "The prefix of a queue's LISTEN/NOTIFY channel announcing committed runnable work. The queue name follows."
+    },
+    {
+      "name": "result_channel_prefix",
+      "type": "string",
+      "value": "rq_r_",
+      "doc": "The prefix of a queue's LISTEN/NOTIFY channel announcing committed results; the payload is comma-joined activity IDs. The queue name follows."
+    },
+    {
+      "name": "business_key_prefix",
+      "type": "string",
+      "value": "rq:key:v2:",
+      "doc": "The prefix of an encoded application idempotency key (vectors/business_key.json)."
+    },
+    {
+      "name": "step_key_prefix",
+      "type": "string",
+      "value": "rq:step:",
+      "doc": "The prefix of the idempotency key derived for an activity spawned by a step (vectors/step_key.json). Not an application key."
+    },
+    {
+      "name": "serialization_json",
+      "type": "string",
+      "value": "json-v1",
+      "doc": "The plain JSON serialization. An empty serialization means the same."
+    },
+    {
+      "name": "serialization_superjson",
+      "type": "string",
+      "value": "superjson-v1",
+      "doc": "The TypeScript SDK's serialization: a SuperJSON {json, meta} envelope."
+    }
+  ],
+  "enums": [
+    {
+      "name": "storage_error_kind",
+      "doc": "The kinds of storage error. The numbers are stored (runnerq_commands err_kind) and sent on the wire, so they never change.",
+      "values": [
+        { "name": "unavailable", "value": 0 },
+        { "name": "conflict", "value": 1 },
+        { "name": "not_found", "value": 2 },
+        { "name": "internal", "value": 3 },
+        { "name": "serialization", "value": 4 },
+        { "name": "configuration", "value": 5 },
+        { "name": "timeout", "value": 6 },
+        { "name": "duplicate_activity", "value": 7 },
+        { "name": "idempotency_conflict", "value": 8 },
+        { "name": "claim_lost", "value": 9 },
+        { "name": "checkpoint_conflict", "value": 10 },
+        { "name": "invalid_argument", "value": 11 },
+        { "name": "unsupported", "value": 12 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "description": "StepKey(root_id, parent_id, step) is the idempotency key of the activity a step spawns: \"rq:step:\" + root_id + \":\" + parent_id + \":\" + step, with the IDs as lowercase canonical UUIDs. Spawning the same step again finds the existing child.",
+  "cases": [
+    { "name": "child of the root", "input": { "parent_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "root_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "step": "charge" }, "output": "rq:step:6ba7b810-9dad-11d1-80b4-00c04fd430c8:6ba7b810-9dad-11d1-80b4-00c04fd430c8:charge" },
+    { "name": "grandchild", "input": { "parent_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd", "root_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "step": "notify" }, "output": "rq:step:6ba7b810-9dad-11d1-80b4-00c04fd430c8:0192f3a4-5b6c-7d8e-9f01-23456789abcd:notify" },
+    { "name": "step name kept verbatim", "input": { "parent_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd", "root_id": "3f2b8c1e-7a4d-4e9b-8c6f-1d2e3f4a5b6c", "step": "send: café" }, "output": "rq:step:3f2b8c1e-7a4d-4e9b-8c6f-1d2e3f4a5b6c:0192f3a4-5b6c-7d8e-9f01-23456789abcd:send: café" }
+  ]
+}

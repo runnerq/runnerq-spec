@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test ./... -count=1
+      - name: Vectors are in canonical layout
+        run: go test ./verify -update -count=1 && git diff --exit-code
+      - name: Generated TypeScript passes tsc and Prettier
+        run: |
+          mkdir -p /tmp/gen && go run ./tools/gen -lang ts -out /tmp/gen/spec.ts
+          cd /tmp/gen && npm init -y >/dev/null && npm i -s typescript@5 prettier@3
+          npx tsc --strict --noEmit --target ES2022 spec.ts
+          npx prettier --check spec.ts
