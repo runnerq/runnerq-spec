@@ -1,0 +1,113 @@
+{
+  "description": "Two activities parked on the same result both wake when it is stored.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child"
+    },
+    {
+      "op": "submit",
+      "as": "p1",
+      "type": "parent"
+    },
+    {
+      "op": "submit",
+      "as": "p2",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "c1",
+        "c2"
+      ],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "p1",
+          "p2"
+        ]
+      }
+    },
+    {
+      "op": "register_dependency",
+      "claim": "c1",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "c1",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "op": "register_dependency",
+      "claim": "c2",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "c2",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "expect_row": {
+        "activity": "p1",
+        "status": "waiting"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p2",
+        "status": "waiting"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "ck",
+      "reason": "no",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p1",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p2",
+        "status": "pending"
+      }
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "description": "With allow_reuse_on_failure, a duplicate key conflicts while the first activity can still succeed, and is reusable once it has failed.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 1,
+      "key": {
+        "key": "k",
+        "on_duplicate": "allow_reuse_on_failure"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "key": {
+        "key": "k",
+        "on_duplicate": "allow_reuse_on_failure"
+      },
+      "expect": {
+        "error": "idempotency_conflict"
+      }
+    },
+    {
+      "expect_absent": "b"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "x",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b2",
+      "type": "t",
+      "key": {
+        "key": "k",
+        "on_duplicate": "allow_reuse_on_failure"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b2",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "lookup_key",
+      "key": [
+        "k",
+        "t"
+      ],
+      "expect": {
+        "id": {
+          "$id": "b2"
+        }
+      }
+    }
+  ]
+}

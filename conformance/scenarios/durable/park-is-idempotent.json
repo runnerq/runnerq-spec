@@ -1,0 +1,55 @@
+{
+  "description": "Repeating the same park (a lost reply) succeeds and changes nothing.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "park",
+      "claim": "c",
+      "kind": "sleep",
+      "step": "sleep:s",
+      "wake_at": "2099-01-01T00:00:00.000Z"
+    },
+    {
+      "op": "park",
+      "claim": "c",
+      "kind": "sleep",
+      "step": "sleep:s",
+      "wake_at": "2099-01-01T00:00:00.000Z"
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "waiting"
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Yielded"
+        ]
+      }
+    }
+  ]
+}

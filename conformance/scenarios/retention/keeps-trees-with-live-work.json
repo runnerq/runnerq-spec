@@ -1,0 +1,94 @@
+{
+  "description": "Cleanup keeps a finished root while a descendant is still running.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "complete",
+      "claim": "cp",
+      "value": 1
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "backdate": "p",
+      "column": "completed_at",
+      "seconds": 7200
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "completed"
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "ck",
+      "value": 2
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_absent": "p"
+    },
+    {
+      "expect_absent": "k"
+    }
+  ]
+}

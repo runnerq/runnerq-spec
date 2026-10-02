@@ -1,0 +1,74 @@
+{
+  "description": "A signal to an activity that isn't parked is stored without changing its status; parking on it afterwards stays runnable.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "signal",
+      "target": "a",
+      "name": "go",
+      "payload": {
+        "n": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing"
+      }
+    },
+    {
+      "expect_result": {
+        "id": {
+          "$checkpoint": [
+            "a",
+            "signal",
+            "go"
+          ]
+        },
+        "state": "Ok",
+        "data": {
+          "n": 1
+        }
+      }
+    },
+    {
+      "op": "park",
+      "claim": "c",
+      "kind": "signal",
+      "step": "signal:go",
+      "wake_in_s": 3600,
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "signal",
+          "go"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending"
+      }
+    }
+  ]
+}

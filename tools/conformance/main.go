@@ -30,7 +30,8 @@ func (d *driverFlags) Set(v string) error { *d = append(*d, v); return nil }
 
 func main() {
 	dsn := flag.String("dsn", os.Getenv("RUNNERQ_TEST_DSN"), "Postgres connection string")
-	dir := flag.String("scenarios", filepath.Join("..", "..", "conformance", "scenarios"), "scenario directory")
+	root := flag.String("spec", filepath.Join("..", ".."), "runnerq-spec root")
+	dir := flag.String("scenarios", "", "scenario directory (default <spec>/conformance/scenarios)")
 	run := flag.String("run", "", "only scenarios whose path matches this regexp")
 	verbose := flag.Bool("v", false, "list every scenario")
 	var drivers driverFlags
@@ -71,7 +72,10 @@ func main() {
 		byName[name] = d
 	}
 
-	events, err := schemacheck.Load(filepath.Join(*dir, "..", "..", "schema", "postgres", "events.schema.json"))
+	if *dir == "" {
+		*dir = filepath.Join(*root, "conformance", "scenarios")
+	}
+	events, err := schemacheck.Load(filepath.Join(*root, "schema", "postgres", "events.schema.json"))
 	if err != nil {
 		fail(err)
 	}

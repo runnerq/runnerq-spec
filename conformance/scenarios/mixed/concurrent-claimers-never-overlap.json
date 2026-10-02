@@ -1,0 +1,35 @@
+{
+  "description": "Go and TypeScript workers claiming from one queue at the same time never claim the same activity, and between them claim it all.",
+  "steps": [
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 120,
+        "type": "t",
+        "by": "go"
+      }
+    },
+    {
+      "submit_many": {
+        "prefix": "b",
+        "n": 0,
+        "type": "t",
+        "by": "ts"
+      }
+    },
+    {
+      "drain": {
+        "types": [
+          "t"
+        ],
+        "by": [
+          "go",
+          "ts"
+        ],
+        "limit": 4,
+        "prefix": "a",
+        "n": 120
+      }
+    }
+  ]
+}

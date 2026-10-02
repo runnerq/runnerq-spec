@@ -1,0 +1,88 @@
+{
+  "description": "A child dead-lettered by the reaper stores an error result, which wakes its waiting parent.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "max_attempts": 1
+    },
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "register_dependency",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "expire_lease": "k"
+    },
+    {
+      "op": "reap",
+      "limit": 10,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "k",
+        "status": "dead_letter"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "k",
+        "state": "Err"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    }
+  ]
+}

@@ -152,6 +152,10 @@ func (r *runner) step(ctx context.Context, step map[string]json.RawMessage) erro
 		ms, _ := strconv.Atoi(string(step["sleep_ms"]))
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 		return nil
+	case step["drain"] != nil:
+		return r.drain(step["drain"])
+	case step["submit_many"] != nil:
+		return r.submitMany(step["submit_many"])
 	case step["expect_row"] != nil:
 		return r.expectRow(ctx, step["expect_row"])
 	case step["expect_events"] != nil:
@@ -615,4 +619,102 @@ func checkpointID(activityID, kind, name string) string {
 func businessKey(key, activityType string) string {
 	data := strconv.Itoa(len(key)) + ":" + key + activityType
 	return "rq:key:v2:" + base64.RawStdEncoding.EncodeToString([]byte(data))
+}
+
+// submitMany submits n activities named prefix0..prefix(n-1).
+func (r *runner) submitMany(raw json.RawMessage) error {
+	var m struct {
+		Prefix string `json:"prefix"`
+		N      int    `json:"n"`
+		Type   string `json:"type"`
+		By     string `json:"by"`
+	}
+	if err := strictUnmarshal(raw, &m); err != nil {
+		return err
+	}
+	d := r.first
+	if m.By != "" {
+		d = r.drivers[m.By]
+	}
+	for i := range m.N {
+		id := r.ref(fmt.Sprintf("%s%d", m.Prefix, i))
+		rep, err := d.call("submit", map[string]any{"id": id, "type": m.Type}, 30*time.Second)
+		if err != nil {
+			return err
+		}
+		if rep.Error != nil {
+			return fmt.Errorf("submit: %s: %s", rep.Error.Kind, rep.Error.Message)
+		}
+	}
+	return nil
+}
+
+// drain claims from several drivers at once until the queue is empty, and
+// checks every one of the named activities was claimed exactly once.
+func (r *runner) drain(raw json.RawMessage) error {
+	var m struct {
+		Types  []string `json:"types"`
+		By     []string `json:"by"`
+		Limit  int      `json:"limit"`
+		Prefix string   `json:"prefix"`
+		N      int      `json:"n"`
+	}
+	if err := strictUnmarshal(raw, &m); err != nil {
+		return err
+	}
+	type result struct {
+		ids []string
+		err error
+	}
+	out := make(chan result, len(m.By))
+	for _, name := range m.By {
+		d := r.drivers[name]
+		go func() {
+			var ids []string
+			for {
+				rep, err := d.call("claim", map[string]any{"types": m.Types, "limit": max(m.Limit, 1), "lease_ms": 60000}, 30*time.Second)
+				if err == nil && rep.Error != nil {
+					err = fmt.Errorf("%s: claim: %s: %s", d.name, rep.Error.Kind, rep.Error.Message)
+				}
+				if err != nil {
+					out <- result{ids, err}
+					return
+				}
+				var got struct {
+					Claims []claim `json:"claims"`
+				}
+				_ = json.Unmarshal(rep.OK, &got)
+				if len(got.Claims) == 0 {
+					out <- result{ids, nil}
+					return
+				}
+				for _, c := range got.Claims {
+					ids = append(ids, c.ID)
+				}
+			}
+		}()
+	}
+	seen := map[string]int{}
+	var counts []string
+	for _, name := range m.By {
+		res := <-out
+		if res.err != nil {
+			return res.err
+		}
+		counts = append(counts, fmt.Sprint(len(res.ids)))
+		for _, id := range res.ids {
+			seen[id]++
+		}
+		_ = name
+	}
+	for i := range m.N {
+		name := fmt.Sprintf("%s%d", m.Prefix, i)
+		if n := seen[r.ref(name)]; n != 1 {
+			return fmt.Errorf("%s claimed %d times (claims per driver: %s)", name, n, strings.Join(counts, ", "))
+		}
+	}
+	if len(seen) != m.N {
+		return fmt.Errorf("claimed %d activities, want %d", len(seen), m.N)
+	}
+	return nil
 }

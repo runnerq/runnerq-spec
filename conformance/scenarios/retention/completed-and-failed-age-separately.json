@@ -1,0 +1,87 @@
+{
+  "description": "Cleanup applies the completed and failed ages to their own roots.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "ok",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "bad",
+      "type": "t",
+      "max_attempts": 1
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c1",
+        "c2"
+      ],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "ok",
+          "bad"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c1",
+      "value": 1
+    },
+    {
+      "op": "fail",
+      "claim": "c2",
+      "reason": "x",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "backdate": "ok",
+      "column": "completed_at",
+      "seconds": 7200
+    },
+    {
+      "backdate": "bad",
+      "column": "completed_at",
+      "seconds": 7200
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 86400,
+      "batch": 100,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_absent": "ok"
+    },
+    {
+      "expect_row": {
+        "activity": "bad",
+        "status": "failed"
+      }
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_absent": "bad"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Looking up a key nothing claimed is not_found.",
+  "steps": [
+    {
+      "op": "lookup_key",
+      "key": [
+        "nobody",
+        "t"
+      ],
+      "expect": {
+        "error": "not_found"
+      }
+    }
+  ]
+}

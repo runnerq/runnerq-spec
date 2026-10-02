@@ -2,6 +2,11 @@
 
 ## 0.7.0
 
+- 13 more scenarios: the other idempotency policies, shared and reaped
+  results waking waiters, park and signal edge cases, the reaper's limit,
+  retention with live work and separate ages, and Go and TypeScript
+  claiming one queue concurrently (`submit_many` and `drain` steps).
+
 - `schema/postgres/events.schema.json`: the detail every implementation
   writes for each stored event type (`runnerq_events.detail`), so an event
   reads the same whichever SDK wrote it. The conformance runner checks every

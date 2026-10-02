@@ -16,7 +16,7 @@ other against the same queue: a mixed Go/TypeScript fleet.
 
 ```sh
 cd tools/conformance
-go run . -dsn "$RUNNERQ_TEST_DSN" -driver go="go run ../../../internal/conformancedriver"
+go run . -dsn "$RUNNERQ_TEST_DSN" -driver go="<command>"   # -spec <root> when run elsewhere
 go run . -dsn "$RUNNERQ_TEST_DSN" -driver go="…" -driver ts="node …/conformance-driver.mjs"
 ```
 
@@ -85,6 +85,12 @@ A step is one of:
   - `{"make_due": name}` sets `scheduled_at` to now.
   - `{"backdate": name, "column": "completed_at", "seconds": n}`.
   - `{"sleep_ms": n}`.
+- **A bulk step** the runner performs through drivers:
+  - `{"submit_many": {"prefix", "n", "type", "by"}}` submits `n` activities
+    named `<prefix>0` to `<prefix>n-1`.
+  - `{"drain": {"types", "by": [drivers], "limit", "prefix", "n"}}` claims
+    from every listed driver at once until the queue is empty, and checks
+    each of the `n` activities was claimed exactly once.
 - **An expectation** the runner checks in SQL:
   - `expect_row`: `runnerq_activities` columns of an activity.
   - `expect_events`: the activity's `runnerq_events` types, in insertion order.

@@ -1,0 +1,41 @@
+{
+  "description": "With allow_reuse, a duplicate key creates a new activity and the key moves to it.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "key": {
+        "key": "k",
+        "on_duplicate": "allow_reuse"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "key": {
+        "key": "k",
+        "on_duplicate": "allow_reuse"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "lookup_key",
+      "key": [
+        "k",
+        "t"
+      ],
+      "expect": {
+        "id": {
+          "$id": "b"
+        }
+      }
+    }
+  ]
+}

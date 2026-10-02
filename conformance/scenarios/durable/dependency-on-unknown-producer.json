@@ -1,0 +1,33 @@
+{
+  "description": "Registering a dependency on an activity that doesn't exist is not_found.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "register_dependency",
+      "claim": "c",
+      "producer": "ghost",
+      "expect": {
+        "error": "not_found"
+      }
+    }
+  ]
+}

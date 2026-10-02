@@ -1,0 +1,69 @@
+{
+  "description": "The reaper takes at most its limit per call.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "c",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "ca",
+        "cb",
+        "cc"
+      ],
+      "limit": 3,
+      "expect": {
+        "claims": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "expire_lease": "b"
+    },
+    {
+      "expire_lease": "c"
+    },
+    {
+      "op": "reap",
+      "limit": 2,
+      "expect": {
+        "count": 2
+      }
+    },
+    {
+      "op": "reap",
+      "limit": 2,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "op": "reap",
+      "limit": 2,
+      "expect": {
+        "count": 0
+      }
+    }
+  ]
+}
