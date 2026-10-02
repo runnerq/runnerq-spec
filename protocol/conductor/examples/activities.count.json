@@ -1,0 +1,32 @@
+{
+  "type": "activities.count",
+  "data": {
+    "filter": {
+      "and": [
+        {
+          "field": "status",
+          "op": "in",
+          "value": [
+            "scheduled",
+            "running"
+          ]
+        },
+        {
+          "field": "metadata.tenant",
+          "op": "eq",
+          "value": "acme"
+        },
+        {
+          "not": {
+            "field": "parent_id",
+            "op": "exists"
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "count": 1204,
+    "exact": true
+  }
+}

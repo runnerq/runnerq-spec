@@ -1,0 +1,55 @@
+{
+  "type": "activities.aggregate",
+  "data": {
+    "filter": {
+      "field": "queue",
+      "op": "eq",
+      "value": "payments"
+    },
+    "group_by": [
+      "type",
+      "status"
+    ],
+    "bucket": {
+      "field": "completed_at",
+      "interval_ms": 60000,
+      "from": "2026-10-02T12:00:00.000Z",
+      "to": "2026-10-02T13:00:00.000Z"
+    },
+    "metrics": [
+      {
+        "name": "count"
+      },
+      {
+        "name": "duration",
+        "field": "run",
+        "percentiles": [
+          50,
+          95,
+          99
+        ]
+      }
+    ],
+    "limit": 200
+  },
+  "response": {
+    "groups": [
+      {
+        "key": {
+          "type": "charge_card",
+          "status": "completed"
+        },
+        "bucket": "2026-10-02T12:01:00.000Z",
+        "count": 1204,
+        "durations": {
+          "run": {
+            "p50": 180,
+            "p95": 900,
+            "p99": 2400
+          }
+        }
+      }
+    ],
+    "truncated": false
+  }
+}

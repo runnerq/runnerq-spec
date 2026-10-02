@@ -48,7 +48,8 @@ func main() {
 	lang := flag.String("lang", "", "go or ts")
 	pkg := flag.String("pkg", "spec", "Go package name")
 	out := flag.String("out", "", "output file")
-	part := flag.String("part", "constants", "constants, schema, storage or executor-report")
+	part := flag.String("part", "constants", "constants, schema, storage, conductor or executor-report")
+	specImport := flag.String("spec-import", "./decode.js", "TypeScript module exporting Spec (-lang ts-specs)")
 	storageImport := flag.String("storage-import", "github.com/alob-mtc/runnerq-go/storage", "Go import path of runnerq-go's storage package")
 	flag.Parse()
 	if *out == "" {
@@ -97,20 +98,29 @@ func main() {
 				err = fmt.Errorf("-lang must be go-protocol, go-client, go-server or ts")
 			}
 		}
-	case "executor-report":
+	case "conductor", "executor-report":
+		// A hosted worker's report is the conductor protocol's ExecutorReport.
 		var p *protocolDoc
-		if p, err = loadProtocol(*root, "protocol/storage/executor_report.schema.json"); err == nil {
-			switch *lang {
-			case "go":
-				src, err = goTypes(p, *pkg)
-			case "ts":
-				src, err = tsProtocol(p, "")
+		if p, err = loadProtocol(*root, "protocol/conductor/conductor.schema.json"); err == nil {
+			var roots []string
+			if *part == "executor-report" {
+				roots = []string{"ExecutorReport"}
+			}
+			switch {
+			case *lang == "go" && roots == nil:
+				src, err = goConductor(p, *pkg)
+			case *lang == "go":
+				src, err = goTypes(p, *pkg, roots...)
+			case *lang == "ts":
+				src, err = tsProtocol(p, "conductor", roots...)
+			case *lang == "ts-specs":
+				src, err = tsSpecs(p, *specImport)
 			default:
 				err = fmt.Errorf("-lang must be go or ts")
 			}
 		}
 	default:
-		err = fmt.Errorf("-part must be constants, schema, storage or executor-report")
+		err = fmt.Errorf("-part must be constants, schema, storage, conductor or executor-report")
 	}
 	if err != nil {
 		fail(err)

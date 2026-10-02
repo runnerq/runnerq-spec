@@ -75,11 +75,38 @@ func TestGenerateStorage(t *testing.T) {
 	if !strings.Contains(string(ts), "Dequeue: { args: DequeueArgs; result: QueuedActivity | null };") {
 		t.Error("TypeScript lacks the Dequeue operation")
 	}
-	r, err := loadProtocol("../..", "protocol/storage/executor_report.schema.json")
+}
+
+func TestGenerateConductor(t *testing.T) {
+	p, err := loadProtocol("../..", "protocol/conductor/conductor.schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if src, err := goTypes(r, "protocol"); err != nil || !strings.Contains(string(src), "HeartbeatFailures uint64") {
-		t.Fatalf("executor report: %v", err)
+	src, err := goConductor(p, "protocol")
+	if err != nil {
+		t.Fatalf("Go output does not format: %v", err)
+	}
+	for _, want := range []string{
+		`TypeActivitiesRunNow = "activities.run_now"`,
+		`StatusDeadLetter ActivityStatus = "dead_letter"`,
+		"Steps *[]Step `json:\"steps,omitempty\"`",
+		"Count *int64 `json:\"count,omitempty\"`",
+		"Wait *Wait `json:\"wait,omitempty\"`",
+		"Counters ExecutorCounters `json:\"counters\"`",
+	} {
+		if !strings.Contains(strings.Join(strings.Fields(string(src)), " "), strings.Join(strings.Fields(want), " ")) {
+			t.Errorf("Go output lacks %s", want)
+		}
+	}
+	report, err := goTypes(p, "protocol", "ExecutorReport")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(report), "type Activity struct") || !strings.Contains(string(report), "type ExecutorCounters struct") {
+		t.Error("the executor report's types are not just those it reaches")
+	}
+	ts, _ := tsProtocol(p, "conductor")
+	if !strings.Contains(string(ts), `"activities.list": {`) || !strings.Contains(string(ts), "export const activityStatusValues") {
+		t.Error("TypeScript lacks the message map or enum values")
 	}
 }

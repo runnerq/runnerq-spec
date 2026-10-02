@@ -1,0 +1,39 @@
+{
+  "type": "activities.retry",
+  "data": {
+    "command_id": "cmd_01JA",
+    "target": {
+      "filter": {
+        "field": "status",
+        "op": "eq",
+        "value": "dead_letter"
+      },
+      "max": 100,
+      "queue": "payments"
+    },
+    "reset_attempts": true
+  },
+  "response": {
+    "matched": 2,
+    "applied": 1,
+    "more": true,
+    "results": [
+      {
+        "id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "outcome": "applied",
+        "status": "pending"
+      },
+      {
+        "id": "0192f3a4-5b6c-7d8e-9f01-000000000002",
+        "outcome": "skipped",
+        "error": {
+          "code": "failed_precondition",
+          "message": "already running",
+          "details": {
+            "status": "running"
+          }
+        }
+      }
+    ]
+  }
+}

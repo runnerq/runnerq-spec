@@ -31,8 +31,11 @@ jobs:
           go run ./tools/gen -lang ts -part schema -out /tmp/gen/schema.ts
           go run ./tools/gen -part storage -lang ts -out /tmp/gen/storage.ts
           go run ./tools/gen -part executor-report -lang ts -out /tmp/gen/report.ts
+          go run ./tools/gen -part conductor -lang ts -out /tmp/gen/conductor.ts
+          go run ./tools/gen -part conductor -lang ts-specs -out /tmp/gen/specs.ts
+          printf 'export type Spec = "string" | "int" | "number" | "bool" | "any" | { array: Spec } | { object: Record<string, Spec> } | (() => Spec);\n' > /tmp/gen/decode.ts
           cd /tmp/gen && npm init -y >/dev/null && npm i -s typescript@5 prettier@3
-          npx tsc --strict --noEmit --target ES2022 spec.ts schema.ts storage.ts report.ts
+          npx tsc --strict --noUncheckedIndexedAccess --noEmit --target ES2022 --module nodenext spec.ts schema.ts storage.ts report.ts conductor.ts specs.ts
           npx prettier --check spec.ts
 
   catalog:

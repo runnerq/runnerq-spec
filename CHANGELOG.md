@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0
+
+Phase 4b: the conductor protocol. Breaking, before any release.
+
+- `protocol/conductor/conductor.schema.json`: every message (`x-messages`)
+  and type, with an example of each and the protocol document (README.md),
+  moved from runnerq-cloud. Decisions where the copies disagreed:
+  - One executor shape everywhere: `ExecutorState` with `claim_lag_ms`,
+    `heartbeat_failures` and `counters` always present, counters as
+    non-negative integers; the hosted report is `ExecutorReport`, replacing
+    the storage protocol's `executor_report.schema.json`.
+  - A request type per command (`CancelRequest`, …) instead of one generic
+    command; concrete `ActivityPage`, `StepPage`, `EventPage`.
+  - `events.unsubscribe` takes `{subscription_id}` and answers `{}`.
+  - The reserved `retention.apply`, `executor.drain` and `executor.resume`
+    are dropped until they are designed.
+  - Typed enums: statuses, filter operators, error codes, outcomes, cascades,
+    wait and step kinds.
+- `tools/gen -part conductor` (Go, TypeScript, and TypeScript decode specs);
+  `-part executor-report` now emits the conductor report's types.
+- `schemacheck`: the schema validator as a package, so implementations can
+  check what they send.
+
 ## 0.4.0
 
 Phase 4a: the storage protocol.

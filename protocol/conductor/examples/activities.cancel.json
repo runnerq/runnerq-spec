@@ -1,0 +1,27 @@
+{
+  "type": "activities.cancel",
+  "data": {
+    "command_id": "cmd_01J9",
+    "target": {
+      "ids": [
+        "0192f3a4-5b6c-7d8e-9f01-23456789abcd"
+      ],
+      "queue": "payments"
+    },
+    "reason": "customer asked to stop",
+    "cascade": "children"
+  },
+  "response": {
+    "matched": 1,
+    "applied": 1,
+    "cascaded": 1,
+    "more": false,
+    "results": [
+      {
+        "id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "outcome": "applied",
+        "status": "cancelled"
+      }
+    ]
+  }
+}

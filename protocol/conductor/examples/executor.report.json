@@ -1,0 +1,21 @@
+{
+  "type": "executor.report",
+  "data": {
+    "id": "exec-7f3a",
+    "uptime_ms": 3600000,
+    "max_concurrency": 32,
+    "in_flight": 1,
+    "claim_lag_ms": 12,
+    "heartbeat_failures": 0,
+    "draining": false,
+    "counters": {
+      "claimed": 1204,
+      "succeeded": 1180,
+      "retried": 17,
+      "failed": 3,
+      "timed_out": 1,
+      "dead_lettered": 2,
+      "claims_lost": 0
+    }
+  }
+}

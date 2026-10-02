@@ -1,0 +1,73 @@
+{
+  "type": "hello",
+  "data": {
+    "protocol_versions": [
+      1
+    ],
+    "sdk": {
+      "name": "runnerq-go",
+      "version": "v0.6.0",
+      "language": "go"
+    },
+    "executor": {
+      "id": "exec-7f3a",
+      "hostname": "worker-1",
+      "queues": [
+        "payments"
+      ],
+      "activity_types": [
+        "charge_card",
+        "checkout"
+      ],
+      "max_concurrency": 32,
+      "started_at": "2026-10-02T12:00:00.000Z",
+      "labels": {
+        "region": "eu"
+      }
+    },
+    "capabilities": {
+      "activities.list": {
+        "v": 1,
+        "filters": [
+          "status",
+          "type",
+          "metadata"
+        ],
+        "sorts": [
+          "created_at"
+        ],
+        "include": [
+          "payload",
+          "result",
+          "last_error"
+        ]
+      },
+      "activities.cancel": {
+        "v": 1,
+        "targets": [
+          "filter",
+          "ids"
+        ]
+      }
+    },
+    "limits": {
+      "max_frame_bytes": 4194304,
+      "max_concurrent_requests": 16
+    }
+  },
+  "response": {
+    "version": 1,
+    "session_id": "ses_1",
+    "app": {
+      "id": "app_1",
+      "name": "Payments"
+    },
+    "config": {
+      "data_mode": "full",
+      "report_interval_ms": 10000
+    },
+    "limits": {
+      "max_frame_bytes": 4194304
+    }
+  }
+}

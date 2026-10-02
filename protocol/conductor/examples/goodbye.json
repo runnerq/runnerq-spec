@@ -1,0 +1,6 @@
+{
+  "type": "goodbye",
+  "data": {
+    "reason": "shutdown"
+  }
+}

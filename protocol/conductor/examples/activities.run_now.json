@@ -1,0 +1,25 @@
+{
+  "type": "activities.run_now",
+  "data": {
+    "command_id": "cmd_01JB",
+    "target": {
+      "ids": [
+        "0192f3a4-5b6c-7d8e-9f01-23456789abcd"
+      ],
+      "queue": "payments"
+    },
+    "dry_run": true
+  },
+  "response": {
+    "matched": 1,
+    "applied": 0,
+    "more": false,
+    "results": [
+      {
+        "id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "outcome": "would_apply",
+        "status": "scheduled"
+      }
+    ]
+  }
+}

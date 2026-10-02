@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,11 @@ type protocolDoc struct {
 	version string
 	defs    *node
 	ops     []*node
+	// msgs are the conductor protocol's x-messages.
+	msgs []*node
+	// omitOptional: optional properties are omitempty in Go (absent, never
+	// zero or null); optional object references are pointers.
+	omitOptional bool
 	// errorCodes are the ErrorCode enum's names, in kind-number order.
 	errorCodes []string
 }
@@ -41,8 +47,20 @@ func loadProtocol(root, rel string) (*protocolDoc, error) {
 	if p.defs == nil || p.version == "" {
 		return nil, fmt.Errorf("%s: needs $defs and x-version", rel)
 	}
+	p.msgs = n.get("x-messages").itemsOrNil()
+	p.omitOptional = n.flag("x-go-omit-optional")
+	for _, m := range p.msgs {
+		for _, key := range []string{"data", "response"} {
+			if ref := m.str(key); ref != "" && p.defs.get(strings.TrimPrefix(ref, "#/$defs/")) == nil {
+				return nil, fmt.Errorf("%s: message %s: unknown %s %s", rel, m.str("type"), key, ref)
+			}
+		}
+		if m.str("type") == "" || m.str("data") == "" {
+			return nil, fmt.Errorf("%s: a message needs a type and data", rel)
+		}
+	}
 	p.ops = n.get("x-operations").itemsOrNil()
-	if codes := p.defs.get("ErrorCode"); codes != nil {
+	if codes := p.defs.get("ErrorCode"); codes != nil && p.ops != nil {
 		p.errorCodes = codes.strings("enum")
 		// The wire names are the storage error kinds', in their numbering.
 		s, err := load(root)
@@ -106,6 +124,9 @@ func goField(prop string, s *node) string {
 // goType is the Go type a schema maps to.
 func (p *protocolDoc) goType(s *node) string {
 	if t := s.str("x-go-type"); t != "" && s.get("$ref") == nil {
+		if s.flag("x-go-pointer") {
+			t = "*" + t
+		}
 		return t
 	}
 	if ref := s.refName(); ref != "" {
@@ -126,23 +147,32 @@ func (p *protocolDoc) goType(s *node) string {
 		}
 		return "*" + t
 	}
+	t := ""
 	switch s.str("type") {
 	case "string":
-		return "string"
+		t = "string"
 	case "boolean":
-		return "bool"
+		t = "bool"
 	case "number":
-		return "float64"
+		t = "float64"
 	case "integer":
-		return "int64"
+		t = "int64"
 	case "array":
-		return "[]" + p.goType(s.get("items"))
+		t = "[]" + p.goType(s.get("items"))
 	case "object":
 		if ap := s.get("additionalProperties"); ap != nil && ap.isObj {
-			return "map[string]" + p.goType(ap)
+			t = "map[string]" + p.goType(ap)
+		} else if ap != nil && ap.value == true {
+			t = "map[string]any"
 		}
 	}
-	panic(fmt.Sprintf("%s: no Go type for schema", p.file))
+	if t == "" {
+		panic(fmt.Sprintf("%s: no Go type for schema", p.file))
+	}
+	if s.flag("x-go-pointer") {
+		t = "*" + t
+	}
+	return t
 }
 
 func goImports(src string, extra ...string) string {
@@ -153,7 +183,7 @@ func goImports(src string, extra ...string) string {
 		{"time.", `"time"`},
 		{"uuid.", `"github.com/google/uuid"`},
 	} {
-		if strings.Contains(src, imp.use) {
+		if regexp.MustCompile(`\b` + regexp.QuoteMeta(imp.use) + `[A-Z]`).MatchString(src) {
 			imports = append(imports, imp.path)
 		}
 	}
@@ -184,15 +214,20 @@ func (p *protocolDoc) goStructs(b *bytes.Buffer, names []string) {
 			continue
 		}
 		fmt.Fprintf(b, "type %s struct {\n", name)
+		required := d.strings("required")
 		for _, m := range props.members {
 			if desc := m.val.str("description"); desc != "" {
 				writeComment(b, "\t", "// ", desc)
 			}
-			tag := m.key
-			if m.val.flag("x-omitempty") {
+			tag, typ := m.key, p.goType(m.val)
+			optional := p.omitOptional && !slices.Contains(required, m.key)
+			if m.val.flag("x-omitempty") || optional {
 				tag += ",omitempty"
 			}
-			fmt.Fprintf(b, "\t%s %s `json:%q`\n", goField(m.key, m.val), p.goType(m.val), tag)
+			if optional && !strings.HasPrefix(typ, "*") && p.isObjectRef(m.val) {
+				typ = "*" + typ
+			}
+			fmt.Fprintf(b, "\t%s %s `json:%q`\n", goField(m.key, m.val), typ, tag)
 		}
 		b.WriteString("}\n\n")
 	}
@@ -230,21 +265,53 @@ func goProtocol(p *protocolDoc, pkg, storageImport string) ([]byte, error) {
 	return goFile(p, pkg, body.String(), storageImport)
 }
 
-// goTypes is every object definition without x-go-type (the executor
-// report's types).
-func goTypes(p *protocolDoc, pkg string) ([]byte, error) {
+// goTypes is the object definitions reachable from roots (all, when none
+// are given) as Go structs, and the enums among them as typed strings.
+func goTypes(p *protocolDoc, pkg string, roots ...string) ([]byte, error) {
 	var body bytes.Buffer
-	p.goStructs(&body, p.generatedDefs(func(string) bool { return true }))
+	keep := p.reachable(roots)
+	p.goEnums(&body, keep)
+	p.goStructs(&body, p.generatedDefs(keep))
 	return goFile(p, pkg, body.String(), "")
+}
+
+// reachable reports which definitions roots refer to, directly or not;
+// with no roots, every definition.
+func (p *protocolDoc) reachable(roots []string) func(string) bool {
+	if len(roots) == 0 {
+		return func(string) bool { return true }
+	}
+	seen := map[string]bool{}
+	var walk func(n *node)
+	walk = func(n *node) {
+		if n == nil {
+			return
+		}
+		if ref := n.refName(); ref != "" && !seen[ref] {
+			seen[ref] = true
+			walk(p.def(ref))
+		}
+		for _, m := range n.members {
+			walk(m.val)
+		}
+		for _, item := range n.items {
+			walk(item)
+		}
+	}
+	for _, r := range roots {
+		seen[r] = true
+		walk(p.def(r))
+	}
+	return func(name string) bool { return seen[name] }
 }
 
 func goFile(p *protocolDoc, pkg, body, storageImport string) ([]byte, error) {
 	src := p.header() + "package " + pkg + "\n\n"
 	extra := []string{}
-	if strings.Contains(body, "storage.") {
+	if regexp.MustCompile(`\bstorage\.[A-Z]`).MatchString(body) {
 		extra = append(extra, strconv.Quote(storageImport))
 	}
-	if strings.Contains(body, "protocol.") {
+	if regexp.MustCompile(`\bprotocol\.[A-Z]`).MatchString(body) {
 		extra = append(extra, strconv.Quote(protocolImport))
 	}
 	src += goImports(body, extra...) + body
@@ -527,13 +594,17 @@ func (v *validators) validator(ref string) string {
 	return fn
 }
 
-// tsProtocol is the TypeScript types for every definition, and for the
-// storage protocol the operations' argument and result types.
-func tsProtocol(p *protocolDoc, prefix string) ([]byte, error) {
+// tsProtocol is the TypeScript types for the definitions (those reachable
+// from roots, when given), and the operations' or messages' map.
+func tsProtocol(p *protocolDoc, prefix string, roots ...string) ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString(p.header())
+	keep := p.reachable(roots)
 	if p.ops != nil {
 		fmt.Fprintf(&b, "/** The RunnerQ-Storage-Version header's value. */\nexport const %sVersion = %q;\n\n", prefix, p.version)
+	}
+	if p.msgs != nil && len(roots) == 0 {
+		fmt.Fprintf(&b, "/** The protocol version these types are. */\nexport const %sVersion = %s;\n\n", prefix, p.version)
 	}
 	if len(p.errorCodes) > 0 {
 		b.WriteString("/** The wire codes of the storage error kinds, indexed by kind number. */\nexport const errorCodes = [\n")
@@ -543,13 +614,16 @@ func tsProtocol(p *protocolDoc, prefix string) ([]byte, error) {
 		b.WriteString("] as const;\n\n")
 	}
 	for _, m := range p.defs.members {
+		if !keep(m.key) {
+			continue
+		}
 		d := m.val
 		if desc := d.str("description"); desc != "" {
 			writeJSDoc(&b, "", desc)
 		}
 		if d.str("type") == "object" && d.get("properties") != nil {
 			props := d.get("properties").members
-			if len(props) == 0 {
+			if len(props) == 0 && !d.flag("additionalProperties") {
 				fmt.Fprintf(&b, "export type %s = Record<string, never>;\n\n", m.key)
 				continue
 			}
@@ -565,10 +639,34 @@ func tsProtocol(p *protocolDoc, prefix string) ([]byte, error) {
 				}
 				fmt.Fprintf(&b, "  %s%s: %s;\n", prop.key, opt, p.tsType(prop.val))
 			}
+			if d.flag("additionalProperties") {
+				b.WriteString("  [key: string]: unknown;\n")
+			}
 			b.WriteString("}\n\n")
 			continue
 		}
 		fmt.Fprintf(&b, "export type %s = %s;\n\n", m.key, p.tsType(d))
+		if values := d.strings("enum"); len(values) > 0 && d.str("type") == "string" {
+			fmt.Fprintf(&b, "/** Every %s. */\nexport const %sValues = [", m.key, lowerFirst(m.key))
+			for i, v := range values {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(strconv.Quote(v))
+			}
+			fmt.Fprintf(&b, "] as const;\n\n")
+		}
+	}
+	if p.msgs != nil && len(roots) == 0 {
+		b.WriteString("/** Each message's kind, sender, data and (for requests) response. */\nexport interface Messages {\n")
+		for _, m := range p.msgs {
+			resp := "never"
+			if r := m.str("response"); r != "" {
+				resp = strings.TrimPrefix(r, "#/$defs/")
+			}
+			fmt.Fprintf(&b, "  %q: {\n    kind: %q;\n    from: %q;\n    data: %s;\n    response: %s;\n  };\n", m.str("type"), m.str("kind"), m.str("from"), strings.TrimPrefix(m.str("data"), "#/$defs/"), resp)
+		}
+		b.WriteString("}\n")
 	}
 	if p.ops != nil {
 		b.WriteString("/** Each operation's arguments and result. */\nexport interface Operations {\n")
@@ -617,6 +715,126 @@ func (p *protocolDoc) tsType(s *node) string {
 		if ap := s.get("additionalProperties"); ap != nil && ap.isObj {
 			return "Record<string, " + p.tsType(ap) + ">"
 		}
+		if s.flag("additionalProperties") {
+			var fields []string
+			for _, m := range s.get("properties").membersOrNil() {
+				fields = append(fields, m.key+"?: "+p.tsType(m.val))
+			}
+			return "{ " + strings.Join(append(fields, "[key: string]: unknown"), "; ") + " }"
+		}
 	}
 	return "unknown"
+}
+
+// isObjectRef reports whether s refers to an object definition (one that
+// becomes a struct).
+func (p *protocolDoc) isObjectRef(s *node) bool {
+	ref := s.refName()
+	if ref == "" {
+		return false
+	}
+	d := p.def(ref)
+	return d.str("type") == "object" && d.str("x-go-type") == ""
+}
+
+// goEnumConst is an enum value's Go constant: x-go-names, else the prefix
+// and the value in PascalCase.
+func goEnumConst(d *node, i int, value string) string {
+	if names := d.strings("x-go-names"); i < len(names) {
+		return names[i]
+	}
+	return d.str("x-go-prefix") + goField(value, &node{})
+}
+
+// goConductor is the conductor protocol's Go types: Version, the message
+// types, a typed string per enum and a struct per object definition.
+func goConductor(p *protocolDoc, pkg string) ([]byte, error) {
+	var body bytes.Buffer
+	fmt.Fprintf(&body, "// Version is the protocol version these types are.\nconst Version = %s\n\n", p.version)
+	body.WriteString("// Message types.\nconst (\n")
+	for _, m := range p.msgs {
+		t := m.str("type")
+		name := "Type" + goField(strings.NewReplacer(".", "_").Replace(t), &node{})
+		if desc := m.str("description"); desc != "" {
+			writeComment(&body, "\t", "// ", desc)
+		}
+		fmt.Fprintf(&body, "\t%s = %q\n", name, t)
+	}
+	body.WriteString(")\n\n")
+	all := func(string) bool { return true }
+	p.goEnums(&body, all)
+	p.goStructs(&body, p.generatedDefs(all))
+	return goFile(p, pkg, body.String(), "")
+}
+
+// goEnums writes a typed string, and a constant per value, for each string
+// enum keep selects.
+func (p *protocolDoc) goEnums(body *bytes.Buffer, keep func(string) bool) {
+	for _, m := range p.defs.members {
+		d := m.val
+		values := d.strings("enum")
+		if d.str("type") != "string" || len(values) == 0 || !keep(m.key) {
+			continue
+		}
+		writeComment(body, "", "// ", m.key+" is "+lowerFirst(d.str("description")))
+		fmt.Fprintf(body, "type %s string\n\nconst (\n", m.key)
+		for i, v := range values {
+			fmt.Fprintf(body, "\t%s %s = %q\n", goEnumConst(d, i, v), m.key, v)
+		}
+		body.WriteString(")\n\n")
+	}
+}
+
+// tsSpecs is a decode spec (the TypeScript SDK's Spec: "string", "int",
+// "number", "bool", "any", {array}, {object}, or a thunk) per object
+// definition, so request decoding rejects unknown fields as Go's does.
+// Maps decode as "any".
+func tsSpecs(p *protocolDoc, specImport string) ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteString(p.header())
+	fmt.Fprintf(&b, "import type { Spec } from %q;\n\n", specImport)
+	b.WriteString("/** A decode spec per object definition. */\nexport const specs: Record<string, Spec> = {\n")
+	for _, m := range p.defs.members {
+		if m.val.str("type") == "object" && m.val.get("properties") != nil {
+			fmt.Fprintf(&b, "  %s: %s,\n", m.key, p.tsSpec(m.val, true))
+		}
+	}
+	b.WriteString("};\n")
+	return b.Bytes(), nil
+}
+
+func (p *protocolDoc) tsSpec(s *node, top bool) string {
+	if ref := s.refName(); ref != "" && !top {
+		d := p.def(ref)
+		if d.str("type") == "object" && d.get("properties") != nil {
+			return fmt.Sprintf("() => specs.%s!", ref)
+		}
+		return p.tsSpec(d, false)
+	}
+	if inner := s.nonNull(); inner != nil {
+		return p.tsSpec(inner, false)
+	}
+	switch s.str("type") {
+	case "string":
+		return `"string"`
+	case "boolean":
+		return `"bool"`
+	case "number":
+		return `"number"`
+	case "integer":
+		return `"int"`
+	case "array":
+		return "{ array: " + p.tsSpec(s.get("items"), false) + " }"
+	case "object":
+		props := s.get("properties")
+		if props == nil || s.get("additionalProperties") != nil && s.get("additionalProperties").value != false {
+			return `"any"`
+		}
+		var fields []string
+		for _, m := range props.members {
+			fields = append(fields, m.key+": "+p.tsSpec(m.val, false))
+		}
+		return "{ object: { " + strings.Join(fields, ", ") + " } }"
+	}
+	return `"any"`
 }

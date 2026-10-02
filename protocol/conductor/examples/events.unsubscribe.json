@@ -1,0 +1,7 @@
+{
+  "type": "events.unsubscribe",
+  "data": {
+    "subscription_id": "sub_1"
+  },
+  "response": {}
+}

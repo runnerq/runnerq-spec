@@ -1,0 +1,2010 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/runnerq/runnerq-spec/protocol/conductor/conductor.schema.json",
+  "title": "RunnerQ conductor protocol, version 1",
+  "description": "Between a worker's agent and the RunnerQ Cloud gateway, over a WebSocket. See README.md. An optional field is omitted when it doesn't apply, never null. Timestamps are RFC 3339 UTC with millisecond precision; durations are integer milliseconds named *_ms; ids are opaque strings.",
+  "x-version": 1,
+  "x-go-omit-optional": true,
+  "$defs": {
+    "Kind": {
+      "description": "What an envelope is: a request, its response, or an event.",
+      "type": "string",
+      "enum": [
+        "req",
+        "res",
+        "evt"
+      ],
+      "x-go-prefix": "Kind",
+      "x-go-names": [
+        "KindRequest",
+        "KindResponse",
+        "KindEvent"
+      ]
+    },
+    "Envelope": {
+      "type": "object",
+      "description": "One frame on the wire: one JSON object per WebSocket text frame.",
+      "properties": {
+        "v": {
+          "type": "integer",
+          "description": "The protocol version the sender speaks; 1.",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "kind": {
+          "$ref": "#/$defs/Kind"
+        },
+        "id": {
+          "type": "string",
+          "description": "Set on requests and echoed by their response."
+        },
+        "type": {
+          "type": "string",
+          "description": "The message type, e.g. activities.list; a response echoes its request's."
+        },
+        "data": {
+          "description": "The message's data (see x-messages); absent with error.",
+          "x-go-type": "json.RawMessage"
+        },
+        "error": {
+          "$ref": "#/$defs/Error",
+          "description": "Replaces data in a failed response."
+        },
+        "meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "v",
+        "kind",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Meta": {
+      "type": "object",
+      "description": "Out-of-band fields; receivers ignore keys they don't know.",
+      "properties": {
+        "deadline": {
+          "type": "string",
+          "description": "When the sender stops waiting for the response.",
+          "format": "date-time"
+        },
+        "mv": {
+          "type": "integer",
+          "description": "The message version, when above 1.",
+          "minimum": 2,
+          "x-go-type": "int"
+        },
+        "traceparent": {
+          "type": "string",
+          "description": "W3C trace context."
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "ErrorCode": {
+      "description": "A failure class. Agents reject anything they don't understand with unsupported.",
+      "type": "string",
+      "enum": [
+        "invalid_argument",
+        "not_found",
+        "failed_precondition",
+        "conflict",
+        "forbidden",
+        "unsupported",
+        "resource_exhausted",
+        "deadline_exceeded",
+        "unavailable",
+        "internal"
+      ],
+      "x-go-prefix": "Code"
+    },
+    "Error": {
+      "type": "object",
+      "description": "A failed response, or a failed item in a command result.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "description": "invalid_argument and unsupported name the input as field; failed_precondition gives the activity's status.",
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ActivityStatus"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "SDKInfo": {
+      "type": "object",
+      "description": "The agent's SDK.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "description": "go, typescript, ..."
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "language"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutorInfo": {
+      "type": "object",
+      "description": "The worker process behind a session.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable for the process; a newer session with the same id supersedes an older one."
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "queues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "activity_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Capability": {
+      "type": "object",
+      "description": "One message type an agent serves, and the sub-features it supports; only the lists relevant to the message are set.",
+      "properties": {
+        "v": {
+          "type": "integer",
+          "description": "The message's version.",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "count, and duration.<field> for each duration field."
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TargetKind"
+          }
+        }
+      },
+      "required": [
+        "v"
+      ],
+      "additionalProperties": false
+    },
+    "TargetKind": {
+      "description": "How a command can select its activities.",
+      "type": "string",
+      "enum": [
+        "ids",
+        "filter",
+        "idempotency_key"
+      ],
+      "x-go-prefix": "Target",
+      "x-go-names": [
+        "TargetIDs",
+        "TargetFilter",
+        "TargetIdempotencyKey"
+      ]
+    },
+    "Limits": {
+      "type": "object",
+      "description": "One side's limits; the effective limit is the smaller of the two.",
+      "properties": {
+        "max_frame_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "max_concurrent_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Hello": {
+      "type": "object",
+      "description": "The agent's handshake, its first frame.",
+      "properties": {
+        "protocol_versions": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "x-go-type": "int"
+          },
+          "description": "Versions the agent speaks; the gateway picks the highest both do."
+        },
+        "sdk": {
+          "$ref": "#/$defs/SDKInfo"
+        },
+        "executor": {
+          "$ref": "#/$defs/ExecutorInfo"
+        },
+        "capabilities": {
+          "description": "Keyed by message type.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Capability"
+          }
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        }
+      },
+      "required": [
+        "protocol_versions",
+        "sdk",
+        "executor",
+        "capabilities",
+        "limits"
+      ],
+      "additionalProperties": false
+    },
+    "AppRef": {
+      "type": "object",
+      "description": "The app a session belongs to.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DataMode": {
+      "description": "What an agent may send: full, or metadata_only (no payloads, results, error messages or event details).",
+      "type": "string",
+      "enum": [
+        "full",
+        "metadata_only"
+      ],
+      "x-go-prefix": "DataMode"
+    },
+    "SessionConfig": {
+      "type": "object",
+      "description": "The gateway's settings for a session; config.update carries the fields that change.",
+      "properties": {
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "report_interval_ms": {
+          "type": "integer",
+          "description": "How often to send executor.report.",
+          "minimum": 0,
+          "x-go-type": "int64"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Welcome": {
+      "type": "object",
+      "description": "The gateway's answer to hello.",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "app": {
+          "$ref": "#/$defs/AppRef"
+        },
+        "config": {
+          "$ref": "#/$defs/SessionConfig"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        }
+      },
+      "required": [
+        "version",
+        "session_id",
+        "app",
+        "config",
+        "limits"
+      ],
+      "additionalProperties": false
+    },
+    "Goodbye": {
+      "type": "object",
+      "description": "Sent by an agent before a graceful shutdown.",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "FilterOp": {
+      "description": "A filter predicate's operator; contains needs the text capability.",
+      "type": "string",
+      "enum": [
+        "eq",
+        "ne",
+        "in",
+        "nin",
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "exists",
+        "prefix",
+        "contains"
+      ],
+      "x-go-prefix": "Op"
+    },
+    "Filter": {
+      "type": "object",
+      "description": "A boolean expression over a resource's fields: exactly one of the combinators (and, or, not) or a predicate (field, op, value).",
+      "properties": {
+        "and": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Filter"
+          }
+        },
+        "or": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Filter"
+          }
+        },
+        "not": {
+          "$ref": "#/$defs/Filter"
+        },
+        "field": {
+          "type": "string",
+          "description": "A dotted path into the resource; metadata.<key> addresses a metadata tag."
+        },
+        "op": {
+          "$ref": "#/$defs/FilterOp"
+        },
+        "value": {
+          "description": "The operand: a list for in and nin, absent for exists.",
+          "x-go-type": "json.RawMessage"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "SortOrder": {
+      "description": "Sort direction.",
+      "type": "string",
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "x-go-prefix": "Order"
+    },
+    "Sort": {
+      "type": "object",
+      "description": "Orders a query by one advertised field; agents add the id as a tiebreaker.",
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "order": {
+          "$ref": "#/$defs/SortOrder",
+          "description": "Default desc."
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "additionalProperties": false
+    },
+    "Query": {
+      "type": "object",
+      "description": "The common list request.",
+      "properties": {
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        },
+        "sort": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sort"
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Heavy fields to return: payload, result, last_error."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Default 50.",
+          "minimum": 0,
+          "maximum": 1000,
+          "x-go-type": "int"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "From the previous page's next_cursor."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "ActivityPage": {
+      "type": "object",
+      "description": "A page of activities.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Activity"
+          }
+        },
+        "next_cursor": {
+          "type": "string",
+          "description": "Present when more items exist."
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "StepPage": {
+      "type": "object",
+      "description": "A page of steps.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        },
+        "next_cursor": {
+          "type": "string",
+          "description": "Present when more items exist."
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "EventPage": {
+      "type": "object",
+      "description": "A page of events.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "next_cursor": {
+          "type": "string",
+          "description": "Present when more items exist."
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "GetRequest": {
+      "type": "object",
+      "description": "Fetches one activity.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "payload, result, last_error, steps, events."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "CountRequest": {
+      "type": "object",
+      "description": "Counts activities matching a filter.",
+      "properties": {
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "CountResult": {
+      "type": "object",
+      "description": "A count; over large sets an agent may estimate, and say so.",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "exact": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "count",
+        "exact"
+      ],
+      "additionalProperties": false
+    },
+    "StepsRequest": {
+      "type": "object",
+      "description": "Lists an activity's steps.",
+      "properties": {
+        "activity_id": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "result."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "x-go-type": "int"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "activity_id"
+      ],
+      "additionalProperties": false
+    },
+    "ResultRequest": {
+      "type": "object",
+      "description": "Fetches an activity's result.",
+      "properties": {
+        "activity_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "activity_id"
+      ],
+      "additionalProperties": false
+    },
+    "TreeRequest": {
+      "type": "object",
+      "description": "Fetches the tree an activity belongs to; id may be any activity in it.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_nodes": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Tree": {
+      "type": "object",
+      "description": "An activity tree.",
+      "properties": {
+        "root_id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Activity"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "root_id",
+        "items",
+        "truncated"
+      ],
+      "additionalProperties": false
+    },
+    "Bucket": {
+      "type": "object",
+      "description": "Splits an aggregate into time buckets.",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "An advertised time field, e.g. completed_at."
+        },
+        "interval_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int64"
+        },
+        "from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "field",
+        "interval_ms"
+      ],
+      "additionalProperties": false
+    },
+    "MetricName": {
+      "description": "An aggregate measure.",
+      "type": "string",
+      "enum": [
+        "count",
+        "duration"
+      ],
+      "x-go-prefix": "Metric"
+    },
+    "DurationField": {
+      "description": "queue: created or scheduled to first start; run: last attempt's start to completion; total: created to completion.",
+      "type": "string",
+      "enum": [
+        "queue",
+        "run",
+        "total"
+      ],
+      "x-go-prefix": "Duration"
+    },
+    "Metric": {
+      "type": "object",
+      "description": "One aggregate measure.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/MetricName"
+        },
+        "field": {
+          "$ref": "#/$defs/DurationField",
+          "description": "For duration."
+        },
+        "percentiles": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "AggregateRequest": {
+      "type": "object",
+      "description": "Groups and measures activities.",
+      "properties": {
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bucket": {
+          "$ref": "#/$defs/Bucket"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Metric"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        }
+      },
+      "required": [
+        "metrics"
+      ],
+      "additionalProperties": false
+    },
+    "AggregateGroup": {
+      "type": "object",
+      "description": "One group of an aggregate.",
+      "properties": {
+        "key": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The group_by fields' values."
+        },
+        "bucket": {
+          "type": "string",
+          "description": "The bucket's start.",
+          "format": "date-time"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-pointer": true,
+          "x-go-type": "int64"
+        },
+        "durations": {
+          "description": "Duration field (run) to percentile (p95) to milliseconds.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "AggregateResult": {
+      "type": "object",
+      "description": "An aggregate's groups.",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AggregateGroup"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "groups",
+        "truncated"
+      ],
+      "additionalProperties": false
+    },
+    "ActivityStatus": {
+      "description": "A canonical status. A retry is scheduled with attempt above 1; there is no retrying status.",
+      "type": "string",
+      "enum": [
+        "pending",
+        "scheduled",
+        "running",
+        "waiting",
+        "completed",
+        "failed",
+        "dead_letter",
+        "cancelled"
+      ],
+      "x-go-prefix": "Status"
+    },
+    "ErrorInfo": {
+      "type": "object",
+      "description": "A failure.",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Omitted in metadata-only mode."
+        },
+        "kind": {
+          "type": "string",
+          "description": "retryable, non_retryable, timeout, ..."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "ResultState": {
+      "description": "An outcome.",
+      "type": "string",
+      "enum": [
+        "ok",
+        "error"
+      ],
+      "x-go-prefix": "Result",
+      "x-go-names": [
+        "ResultOK",
+        "ResultError"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "description": "An activity's or step's outcome: data when ok, error when not.",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ResultState"
+        },
+        "data": {
+          "x-go-type": "json.RawMessage"
+        },
+        "error": {
+          "$ref": "#/$defs/ErrorInfo"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "WaitKind": {
+      "description": "What a waiting activity is parked on.",
+      "type": "string",
+      "enum": [
+        "sleep",
+        "signal",
+        "children",
+        "other"
+      ],
+      "x-go-prefix": "Wait"
+    },
+    "Wait": {
+      "type": "object",
+      "description": "Why a waiting activity is parked.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/WaitKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "Activity": {
+      "type": "object",
+      "description": "An activity. Fields that don't apply are omitted, not null.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "queue": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ActivityStatus"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "1 low to 4 critical.",
+          "minimum": 1,
+          "maximum": 4,
+          "x-go-type": "int"
+        },
+        "root_id": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer",
+          "description": "The current or last attempt, from 1.",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "max_attempts": {
+          "type": "integer",
+          "description": "Absent when unlimited.",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scheduled_for": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "lease_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "executor_id": {
+          "type": "string",
+          "description": "The executor running it, while running."
+        },
+        "wait": {
+          "$ref": "#/$defs/Wait",
+          "description": "While waiting."
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "last_error": {
+          "$ref": "#/$defs/ErrorInfo",
+          "description": "When included."
+        },
+        "payload": {
+          "description": "When included; never in metadata-only mode.",
+          "x-go-type": "json.RawMessage"
+        },
+        "result": {
+          "$ref": "#/$defs/Result",
+          "description": "When included; never in metadata-only mode."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "description": "When included on activities.get; an included empty list is [].",
+          "x-go-pointer": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "description": "When included on activities.get; an included empty list is [].",
+          "x-go-pointer": true
+        },
+        "extensions": {
+          "description": "SDK-specific data keyed by SDK language; the Cloud may show it but never depends on it.",
+          "type": "object",
+          "additionalProperties": {
+            "x-go-type": "json.RawMessage"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "status",
+        "priority",
+        "depth",
+        "attempt",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "StepKind": {
+      "description": "What a step is.",
+      "type": "string",
+      "enum": [
+        "run",
+        "sleep",
+        "signal",
+        "child",
+        "other"
+      ],
+      "x-go-prefix": "Step"
+    },
+    "Step": {
+      "type": "object",
+      "description": "A durable checkpoint inside an activity.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/StepKind"
+        },
+        "status": {
+          "$ref": "#/$defs/ActivityStatus",
+          "description": "completed or failed, from its result."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "child_id": {
+          "type": "string",
+          "description": "When the step spawned a child."
+        },
+        "result": {
+          "$ref": "#/$defs/Result",
+          "description": "When included."
+        }
+      },
+      "required": [
+        "id",
+        "activity_id",
+        "name",
+        "kind",
+        "status",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "type": "object",
+      "description": "An entry in an activity's history.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique; consumers drop repeats by it."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Ordered, shared across the app's executors."
+        },
+        "activity_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "A group and name: activity.created, attempt.started, ... Unknown types are shown generically."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "executor_id": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "detail": {
+          "description": "Open; omitted in metadata-only mode.",
+          "x-go-type": "json.RawMessage"
+        }
+      },
+      "required": [
+        "id",
+        "cursor",
+        "activity_id",
+        "type",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "RunningActivity": {
+      "type": "object",
+      "description": "An activity in flight on an executor.",
+      "properties": {
+        "activity_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "activity_id",
+        "type",
+        "attempt",
+        "started_at"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutorCounters": {
+      "type": "object",
+      "description": "Activity outcomes since the executor started.",
+      "properties": {
+        "claimed": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "succeeded": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "retried": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "timed_out": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "dead_lettered": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "claims_lost": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        }
+      },
+      "required": [
+        "claimed",
+        "succeeded",
+        "retried",
+        "failed",
+        "timed_out",
+        "dead_lettered",
+        "claims_lost"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutorState": {
+      "type": "object",
+      "description": "An executor's live, in-memory state: executor.describe's answer, and (without running) executor.report's data.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "uptime_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "in_flight": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "running": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RunningActivity"
+          },
+          "description": "On executor.describe and hosted reports; omitted from executor.report."
+        },
+        "claim_lag_ms": {
+          "type": "integer",
+          "description": "How long the latest activity waited to start after it was due.",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "heartbeat_failures": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int64"
+        },
+        "draining": {
+          "type": "boolean"
+        },
+        "counters": {
+          "$ref": "#/$defs/ExecutorCounters"
+        }
+      },
+      "required": [
+        "id",
+        "uptime_ms",
+        "max_concurrency",
+        "in_flight",
+        "claim_lag_ms",
+        "heartbeat_failures",
+        "draining",
+        "counters"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutorReport": {
+      "type": "object",
+      "description": "A hosted worker's heartbeat to the data plane (PUT /v1/executors/{id}, with the store key; see the storage protocol): its hello's sdk and executor, and its state with running.",
+      "properties": {
+        "sdk": {
+          "$ref": "#/$defs/SDKInfo"
+        },
+        "executor": {
+          "$ref": "#/$defs/ExecutorInfo"
+        },
+        "state": {
+          "$ref": "#/$defs/ExecutorState"
+        }
+      },
+      "required": [
+        "sdk",
+        "executor",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "Empty": {
+      "type": "object",
+      "description": "No data.",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "Target": {
+      "type": "object",
+      "description": "What a command acts on: ids, a filter bounded by max, or an idempotency key and type (signals).",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1000
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        },
+        "max": {
+          "type": "integer",
+          "description": "Required with filter.",
+          "minimum": 1,
+          "x-go-type": "int"
+        },
+        "queue": {
+          "type": "string",
+          "description": "Set by the Cloud: the queue the routed executor serves. A mismatch is failed_precondition."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "CancelCascade": {
+      "description": "children (the default) also cancels non-terminal descendants.",
+      "type": "string",
+      "enum": [
+        "children",
+        "none"
+      ],
+      "x-go-prefix": "Cascade"
+    },
+    "DeleteCascade": {
+      "description": "Delete removes a finished root with its whole tree.",
+      "type": "string",
+      "enum": [
+        "tree"
+      ],
+      "x-go-prefix": "Cascade",
+      "x-go-names": [
+        "CascadeTree"
+      ]
+    },
+    "CancelRequest": {
+      "type": "object",
+      "description": "activities.cancel: cancel non-terminal activities. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "cascade": {
+          "$ref": "#/$defs/CancelCascade"
+        }
+      },
+      "required": [
+        "command_id",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "RetryRequest": {
+      "type": "object",
+      "description": "activities.retry: run failed, dead-lettered or cancelled activities again, keeping their checkpoints. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "reset_attempts": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "command_id",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "RunNowRequest": {
+      "type": "object",
+      "description": "activities.run_now: make scheduled or waiting activities runnable now. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        }
+      },
+      "required": [
+        "command_id",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "RescheduleRequest": {
+      "type": "object",
+      "description": "activities.reschedule: move a scheduled activity's time. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "command_id",
+        "target",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "SetPriorityRequest": {
+      "type": "object",
+      "description": "activities.set_priority: change non-terminal activities' priority. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "x-go-type": "int"
+        }
+      },
+      "required": [
+        "command_id",
+        "target",
+        "priority"
+      ],
+      "additionalProperties": false
+    },
+    "DeleteRequest": {
+      "type": "object",
+      "description": "activities.delete: delete finished roots with their trees and history. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "cascade": {
+          "$ref": "#/$defs/DeleteCascade"
+        }
+      },
+      "required": [
+        "command_id",
+        "target",
+        "cascade"
+      ],
+      "additionalProperties": false
+    },
+    "SignalRequest": {
+      "type": "object",
+      "description": "activities.signal: deliver a signal, waking the activity if it waits. Each command accepts only its own fields.",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "Makes the command idempotent: the same id replays the stored outcome; with different input it is a conflict."
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Say what would happen, changing nothing."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Recorded in the activity's history."
+        },
+        "name": {
+          "type": "string"
+        },
+        "payload": {
+          "x-go-type": "json.RawMessage"
+        }
+      },
+      "required": [
+        "command_id",
+        "target",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "CommandOutcome": {
+      "description": "What happened to one target; would_apply on dry runs.",
+      "type": "string",
+      "enum": [
+        "applied",
+        "skipped",
+        "would_apply"
+      ],
+      "x-go-prefix": "Outcome",
+      "x-go-names": [
+        "OutcomeApplied",
+        "OutcomeSkipped",
+        "OutcomeWouldApply"
+      ]
+    },
+    "CommandItem": {
+      "type": "object",
+      "description": "The result for one target.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/CommandOutcome"
+        },
+        "status": {
+          "$ref": "#/$defs/ActivityStatus"
+        },
+        "error": {
+          "$ref": "#/$defs/Error"
+        }
+      },
+      "required": [
+        "id",
+        "outcome"
+      ],
+      "additionalProperties": false
+    },
+    "CommandResult": {
+      "type": "object",
+      "description": "A command's outcome. Per-item failures don't fail the request; a request-level error means nothing was applied.",
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "applied": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "cascaded": {
+          "type": "integer",
+          "description": "Descendants a cascading cancel also cancelled.",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "more": {
+          "type": "boolean",
+          "description": "A bounded filter target left more to act on."
+        },
+        "replayed": {
+          "type": "boolean",
+          "description": "Served from the command ledger."
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandItem"
+          }
+        }
+      },
+      "required": [
+        "matched",
+        "applied",
+        "more",
+        "results"
+      ],
+      "additionalProperties": false
+    },
+    "EventsSubscribe": {
+      "type": "object",
+      "description": "Starts an event stream; without after_cursor it starts at the end of the log.",
+      "properties": {
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        },
+        "after_cursor": {
+          "type": "string"
+        },
+        "max_batch": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        },
+        "max_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "x-go-type": "int"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Subscription": {
+      "type": "object",
+      "description": "A subscription and where it starts.",
+      "properties": {
+        "subscription_id": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription_id",
+        "cursor"
+      ],
+      "additionalProperties": false
+    },
+    "EventsUnsubscribe": {
+      "type": "object",
+      "description": "Ends a subscription.",
+      "properties": {
+        "subscription_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription_id"
+      ],
+      "additionalProperties": false
+    },
+    "StreamEvents": {
+      "type": "object",
+      "description": "A batch of a subscription's events; cursor is where to resume.",
+      "properties": {
+        "subscription_id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription_id",
+        "items",
+        "cursor"
+      ],
+      "additionalProperties": false
+    },
+    "StreamGap": {
+      "type": "object",
+      "description": "Events after since_cursor may have been lost; re-query them with events.list.",
+      "properties": {
+        "subscription_id": {
+          "type": "string"
+        },
+        "since_cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription_id",
+        "since_cursor"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "x-messages": [
+    {
+      "type": "hello",
+      "kind": "req",
+      "from": "agent",
+      "data": "#/$defs/Hello",
+      "response": "#/$defs/Welcome",
+      "description": "The first frame, within 10 seconds of connecting."
+    },
+    {
+      "type": "goodbye",
+      "kind": "evt",
+      "from": "agent",
+      "data": "#/$defs/Goodbye"
+    },
+    {
+      "type": "activities.list",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/Query",
+      "response": "#/$defs/ActivityPage"
+    },
+    {
+      "type": "activities.get",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/GetRequest",
+      "response": "#/$defs/Activity"
+    },
+    {
+      "type": "activities.count",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/CountRequest",
+      "response": "#/$defs/CountResult"
+    },
+    {
+      "type": "activities.aggregate",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/AggregateRequest",
+      "response": "#/$defs/AggregateResult"
+    },
+    {
+      "type": "steps.list",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/StepsRequest",
+      "response": "#/$defs/StepPage"
+    },
+    {
+      "type": "events.list",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/Query",
+      "response": "#/$defs/EventPage",
+      "description": "Over events; sorted by at."
+    },
+    {
+      "type": "results.get",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/ResultRequest",
+      "response": "#/$defs/Result"
+    },
+    {
+      "type": "trees.get",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/TreeRequest",
+      "response": "#/$defs/Tree"
+    },
+    {
+      "type": "executor.describe",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/Empty",
+      "response": "#/$defs/ExecutorState"
+    },
+    {
+      "type": "activities.cancel",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/CancelRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.retry",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/RetryRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.run_now",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/RunNowRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.reschedule",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/RescheduleRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.set_priority",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/SetPriorityRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.delete",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/DeleteRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "activities.signal",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/SignalRequest",
+      "response": "#/$defs/CommandResult"
+    },
+    {
+      "type": "events.subscribe",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/EventsSubscribe",
+      "response": "#/$defs/Subscription"
+    },
+    {
+      "type": "events.unsubscribe",
+      "kind": "req",
+      "from": "cloud",
+      "data": "#/$defs/EventsUnsubscribe",
+      "response": "#/$defs/Empty"
+    },
+    {
+      "type": "stream.events",
+      "kind": "evt",
+      "from": "agent",
+      "data": "#/$defs/StreamEvents"
+    },
+    {
+      "type": "stream.gap",
+      "kind": "evt",
+      "from": "agent",
+      "data": "#/$defs/StreamGap"
+    },
+    {
+      "type": "executor.report",
+      "kind": "evt",
+      "from": "agent",
+      "data": "#/$defs/ExecutorState",
+      "description": "Every config.report_interval_ms, without running."
+    },
+    {
+      "type": "config.update",
+      "kind": "evt",
+      "from": "cloud",
+      "data": "#/$defs/SessionConfig",
+      "description": "The fields that change; the agent applies them at once."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "type": "events.subscribe",
+  "data": {
+    "filter": {
+      "field": "queue",
+      "op": "eq",
+      "value": "payments"
+    },
+    "after_cursor": "1200",
+    "max_batch": 256,
+    "max_delay_ms": 500
+  },
+  "response": {
+    "subscription_id": "sub_1",
+    "cursor": "1200"
+  }
+}

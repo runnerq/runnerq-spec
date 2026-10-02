@@ -1,0 +1,48 @@
+{
+  "sdk": {
+    "name": "runnerq-go",
+    "version": "v0.6.0",
+    "language": "go"
+  },
+  "executor": {
+    "id": "exec-7f3a",
+    "hostname": "worker-1",
+    "queues": [
+      "payments"
+    ],
+    "activity_types": [
+      "SendEmail"
+    ],
+    "max_concurrency": 7,
+    "started_at": "2026-10-02T12:00:00.000Z",
+    "labels": {
+      "region": "eu"
+    }
+  },
+  "state": {
+    "id": "exec-7f3a",
+    "uptime_ms": 3600000,
+    "max_concurrency": 32,
+    "in_flight": 1,
+    "running": [
+      {
+        "activity_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "type": "charge_card",
+        "attempt": 2,
+        "started_at": "2026-10-02T12:00:05.000Z"
+      }
+    ],
+    "claim_lag_ms": 12,
+    "heartbeat_failures": 0,
+    "draining": false,
+    "counters": {
+      "claimed": 1204,
+      "succeeded": 1180,
+      "retried": 17,
+      "failed": 3,
+      "timed_out": 1,
+      "dead_lettered": 2,
+      "claims_lost": 0
+    }
+  }
+}

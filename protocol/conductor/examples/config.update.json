@@ -1,0 +1,6 @@
+{
+  "type": "config.update",
+  "data": {
+    "data_mode": "metadata_only"
+  }
+}

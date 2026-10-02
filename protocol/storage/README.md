@@ -7,9 +7,9 @@ protocol between a worker's agent and the control plane.
 | File | What it is |
 | --- | --- |
 | `storage.schema.json` | Every operation's arguments and result (`x-operations`), and the types they carry. |
-| `executor_report.schema.json` | A worker's heartbeat. |
 | `examples/<Operation>.json` | One request and response per operation, as the Go adapter encodes them. |
-| `executor_report.example.json` | A report, as the Go adapter encodes it. |
+
+A worker's heartbeat (below) is the conductor protocol's `ExecutorReport`.
 
 `verify/` checks every example against its schema. The adapters and storaged
 use code generated from the schemas (`tools/gen -part storage` and
@@ -104,7 +104,7 @@ by the data plane's reaper after its lease expires.
 
 Each engine using the adapter reports itself for RunnerQ Cloud's Fleet:
 `PUT /v1/executors/{id}`, with the store key and version header, sending an
-`ExecutorReport` every 10 seconds and, at most every 2 seconds, when it changes.
+`ExecutorReport` (`protocol/conductor`) every 10 seconds and, at most every 2 seconds, when it changes.
 On a clean stop it sends a final report and then `DELETE /v1/executors/{id}`.
 
 The report's single queue is recorded like a first use. Reports are at most

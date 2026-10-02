@@ -1,209 +1,27 @@
 package verify
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
-	"regexp"
-	"slices"
-	"strings"
 	"testing"
-	"time"
+
+	"github.com/runnerq/runnerq-spec/schemacheck"
 )
 
-// validator checks JSON values against the subset of JSON Schema 2020-12
-// the protocol schemas use. String lengths are UTF-8 bytes, as the
-// protocols say.
-type validator struct {
-	defs map[string]any
-}
-
-var uuidRe = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func loadSchema(t *testing.T, path string) (map[string]any, *validator) {
+func loadSchema(t *testing.T, path string) (map[string]any, *schemacheck.Schema) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", path))
+	s, err := schemacheck.Load(filepath.Join("..", path))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var doc map[string]any
-	if err := decodeNumbers(raw, &doc); err != nil {
-		t.Fatalf("%s: %v", path, err)
-	}
-	if doc["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
-		t.Fatalf("%s: not a 2020-12 schema", path)
-	}
-	defs, _ := doc["$defs"].(map[string]any)
-	return doc, &validator{defs: defs}
+	return s.Doc, s
 }
 
-func decodeNumbers(raw []byte, v any) error {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.UseNumber()
-	return dec.Decode(v)
-}
-
-func (v *validator) check(schema any, value any, path string) error {
-	s, ok := schema.(map[string]any)
-	if !ok {
-		return fmt.Errorf("%s: schema is not an object", path)
-	}
-	if ref, ok := s["$ref"].(string); ok {
-		def, ok := v.defs[strings.TrimPrefix(ref, "#/$defs/")]
-		if !ok {
-			return fmt.Errorf("%s: unknown $ref %s", path, ref)
-		}
-		if err := v.check(def, value, path); err != nil {
-			return err
-		}
-	}
-	if anyOf, ok := s["anyOf"].([]any); ok {
-		var errs []string
-		for _, branch := range anyOf {
-			err := v.check(branch, value, path)
-			if err == nil {
-				errs = nil
-				break
-			}
-			errs = append(errs, err.Error())
-		}
-		if errs != nil {
-			return fmt.Errorf("%s: matches no anyOf branch (%s)", path, strings.Join(errs, "; "))
-		}
-	}
-	if not, ok := s["not"]; ok && v.check(not, value, path) == nil {
-		return fmt.Errorf("%s: matches a forbidden schema", path)
-	}
-	if c, ok := s["const"]; ok && fmt.Sprint(c) != fmt.Sprint(value) {
-		return fmt.Errorf("%s: %v is not %v", path, value, c)
-	}
-	if enum, ok := s["enum"].([]any); ok && !slices.ContainsFunc(enum, func(e any) bool { return fmt.Sprint(e) == fmt.Sprint(value) }) {
-		return fmt.Errorf("%s: %v is not one of %v", path, value, enum)
-	}
-	if typ, ok := s["type"].(string); ok {
-		if err := checkType(typ, value, path); err != nil {
-			return err
-		}
-	}
-	switch val := value.(type) {
-	case string:
-		if n, ok := s["minLength"].(json.Number); ok && int64(len(val)) < mustInt(n) {
-			return fmt.Errorf("%s: shorter than %s bytes", path, n)
-		}
-		if n, ok := s["maxLength"].(json.Number); ok && int64(len(val)) > mustInt(n) {
-			return fmt.Errorf("%s: longer than %s bytes", path, n)
-		}
-		switch s["format"] {
-		case "uuid":
-			if !uuidRe.MatchString(val) {
-				return fmt.Errorf("%s: %q is not a lowercase UUID", path, val)
-			}
-		case "date-time":
-			if _, err := time.Parse(time.RFC3339Nano, val); err != nil {
-				return fmt.Errorf("%s: %q is not RFC 3339", path, val)
-			}
-		}
-	case json.Number:
-		x, _ := new(big.Float).SetString(val.String())
-		if n, ok := s["minimum"].(json.Number); ok {
-			if m, _ := new(big.Float).SetString(n.String()); x.Cmp(m) < 0 {
-				return fmt.Errorf("%s: %s is below %s", path, val, n)
-			}
-		}
-		if n, ok := s["maximum"].(json.Number); ok {
-			if m, _ := new(big.Float).SetString(n.String()); x.Cmp(m) > 0 {
-				return fmt.Errorf("%s: %s is above %s", path, val, n)
-			}
-		}
-	case []any:
-		if n, ok := s["maxItems"].(json.Number); ok && int64(len(val)) > mustInt(n) {
-			return fmt.Errorf("%s: more than %s items", path, n)
-		}
-		if items, ok := s["items"]; ok {
-			for i, item := range val {
-				if err := v.check(items, item, fmt.Sprintf("%s[%d]", path, i)); err != nil {
-					return err
-				}
-			}
-		}
-	case map[string]any:
-		props, _ := s["properties"].(map[string]any)
-		for _, r := range asStrings(s["required"]) {
-			if _, ok := val[r]; !ok {
-				return fmt.Errorf("%s: missing required %s", path, r)
-			}
-		}
-		for k, item := range val {
-			if ps, ok := props[k]; ok {
-				if err := v.check(ps, item, path+"."+k); err != nil {
-					return err
-				}
-				continue
-			}
-			switch ap := s["additionalProperties"].(type) {
-			case bool:
-				if !ap {
-					return fmt.Errorf("%s: unknown property %s", path, k)
-				}
-			case map[string]any:
-				if err := v.check(ap, item, path+"."+k); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func checkType(typ string, value any, path string) error {
-	ok := false
-	switch typ {
-	case "null":
-		ok = value == nil
-	case "boolean":
-		_, ok = value.(bool)
-	case "string":
-		_, ok = value.(string)
-	case "number":
-		_, ok = value.(json.Number)
-	case "integer":
-		if n, isNum := value.(json.Number); isNum {
-			_, ok = new(big.Int).SetString(n.String(), 10)
-		}
-	case "array":
-		_, ok = value.([]any)
-	case "object":
-		_, ok = value.(map[string]any)
-	}
-	if !ok {
-		return fmt.Errorf("%s: %v is not %s", path, value, typ)
-	}
-	return nil
-}
-
-func mustInt(n json.Number) int64 {
-	i, err := n.Int64()
-	if err != nil {
-		panic(err)
-	}
-	return i
-}
-
-func asStrings(v any) []string {
-	var out []string
-	list, _ := v.([]any)
-	for _, s := range list {
-		out = append(out, s.(string))
-	}
-	return out
-}
+var decodeNumbers = schemacheck.Decode
 
 // The validator itself: one value per rule it enforces.
 func TestValidator(t *testing.T) {
-	v := &validator{defs: map[string]any{"U": map[string]any{"type": "string", "format": "uuid"}}}
+	v := schemacheck.New(map[string]any{"U": map[string]any{"type": "string", "format": "uuid"}})
 	schema := func(s string) any {
 		var out any
 		if err := decodeNumbers([]byte(s), &out); err != nil {
@@ -235,7 +53,7 @@ func TestValidator(t *testing.T) {
 		{`{"type":"string","format":"date-time"}`, `"yesterday"`, false},
 		{`{"enum":[1,2]}`, `3`, false},
 	} {
-		err := v.check(schema(c.schema), value(c.value), "$")
+		err := v.Check(schema(c.schema), value(c.value), "$")
 		if (err == nil) != c.ok {
 			t.Errorf("%s against %s: got %v, want ok=%v", c.value, c.schema, err, c.ok)
 		}
@@ -266,10 +84,10 @@ func TestStorageExamples(t *testing.T) {
 			t.Errorf("%s: example is for %v", name, ex["operation"])
 		}
 		args := map[string]any{"$ref": op["args"]}
-		if err := v.check(args, ex["args"], name+".args"); err != nil {
+		if err := v.Check(args, ex["args"], name+".args"); err != nil {
 			t.Error(err)
 		}
-		if err := v.check(op["result"], ex["result"], name+".result"); err != nil {
+		if err := v.Check(op["result"], ex["result"], name+".result"); err != nil {
 			t.Error(err)
 		}
 	}
@@ -279,9 +97,52 @@ func TestStorageExamples(t *testing.T) {
 	}
 }
 
+// Every conductor message has an example: its data, and a request's response.
+func TestConductorExamples(t *testing.T) {
+	doc, v := loadSchema(t, "protocol/conductor/conductor.schema.json")
+	msgs, _ := doc["x-messages"].([]any)
+	if len(msgs) == 0 {
+		t.Fatal("no messages")
+	}
+	for _, m := range msgs {
+		msg := m.(map[string]any)
+		name := msg["type"].(string)
+		raw, err := os.ReadFile(filepath.Join("..", "protocol", "conductor", "examples", name+".json"))
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		var ex map[string]any
+		if err := decodeNumbers(raw, &ex); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if ex["type"] != name {
+			t.Errorf("%s: example is for %v", name, ex["type"])
+		}
+		if err := v.Check(map[string]any{"$ref": msg["data"]}, ex["data"], name+".data"); err != nil {
+			t.Error(err)
+		}
+		resp, hasResp := ex["response"]
+		switch {
+		case msg["kind"] == "req" && !hasResp:
+			t.Errorf("%s: a request's example needs a response", name)
+		case msg["kind"] == "req":
+			if err := v.Check(map[string]any{"$ref": msg["response"]}, resp, name+".response"); err != nil {
+				t.Error(err)
+			}
+		case hasResp:
+			t.Errorf("%s: an event has no response", name)
+		}
+	}
+	files, _ := filepath.Glob(filepath.Join("..", "protocol", "conductor", "examples", "*.json"))
+	if len(files) != len(msgs) {
+		t.Errorf("%d examples for %d messages", len(files), len(msgs))
+	}
+}
+
 func TestExecutorReportExample(t *testing.T) {
-	doc, v := loadSchema(t, "protocol/storage/executor_report.schema.json")
-	raw, err := os.ReadFile(filepath.Join("..", "protocol", "storage", "executor_report.example.json"))
+	_, v := loadSchema(t, "protocol/conductor/conductor.schema.json")
+	raw, err := os.ReadFile(filepath.Join("..", "protocol", "conductor", "executor_report.example.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +150,7 @@ func TestExecutorReportExample(t *testing.T) {
 	if err := decodeNumbers(raw, &ex); err != nil {
 		t.Fatal(err)
 	}
-	if err := v.check(map[string]any{"$ref": doc["$ref"]}, ex, "report"); err != nil {
+	if err := v.Check(map[string]any{"$ref": "#/$defs/ExecutorReport"}, ex, "report"); err != nil {
 		t.Error(err)
 	}
 }
