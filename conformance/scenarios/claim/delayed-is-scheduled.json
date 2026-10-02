@@ -1,0 +1,55 @@
+{
+  "description": "A delayed activity is scheduled, isn't claimable until due, and is claimable once due.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "delay_s": 3600
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "scheduled",
+        "scheduled_at": {
+          "$future": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Scheduled"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    }
+  ]
+}

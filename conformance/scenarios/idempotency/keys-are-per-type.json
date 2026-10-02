@@ -1,0 +1,53 @@
+{
+  "description": "The same key on different types names different activities.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "x",
+      "key": {
+        "key": "k",
+        "on_duplicate": "return_existing"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "y",
+      "key": {
+        "key": "k",
+        "on_duplicate": "return_existing"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "lookup_key",
+      "key": [
+        "k",
+        "x"
+      ],
+      "expect": {
+        "id": {
+          "$id": "a"
+        }
+      }
+    },
+    {
+      "op": "lookup_key",
+      "key": [
+        "k",
+        "y"
+      ],
+      "expect": {
+        "id": {
+          "$id": "b"
+        }
+      }
+    }
+  ]
+}

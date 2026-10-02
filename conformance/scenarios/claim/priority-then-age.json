@@ -1,0 +1,55 @@
+{
+  "description": "Claims take the highest priority first, then the oldest.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "low",
+      "type": "t",
+      "priority": 1
+    },
+    {
+      "op": "submit",
+      "as": "old",
+      "type": "t",
+      "priority": 2
+    },
+    {
+      "op": "submit",
+      "as": "new",
+      "type": "t",
+      "priority": 2
+    },
+    {
+      "op": "submit",
+      "as": "crit",
+      "type": "t",
+      "priority": 4
+    },
+    {
+      "backdate": "old",
+      "column": "created_at",
+      "seconds": 60
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "limit": 4,
+      "expect": {
+        "claims": [
+          "crit",
+          "old",
+          "new",
+          "low"
+        ]
+      }
+    }
+  ]
+}

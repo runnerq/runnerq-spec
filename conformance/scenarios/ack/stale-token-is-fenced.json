@@ -1,0 +1,98 @@
+{
+  "description": "After its lease is reaped and the activity reclaimed, the old claim can't complete, fail or park it.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "old"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "op": "reap",
+      "limit": 10,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "new"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "old",
+      "value": 1,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "old",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "op": "park",
+      "claim": "old",
+      "kind": "sleep",
+      "step": "sleep:s",
+      "wake_in_s": 60,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing",
+        "current_worker_id": {
+          "$token": "new"
+        }
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "new",
+      "value": 2
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Ok",
+        "data": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "description": "Completing again with the same value is a no-op; a different value is a checkpoint conflict.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": {
+        "n": 1
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": {
+        "n": 1
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": {
+        "n": 2
+      },
+      "expect": {
+        "error": "checkpoint_conflict"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Ok",
+        "data": {
+          "n": 1
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Completed"
+        ]
+      }
+    }
+  ]
+}

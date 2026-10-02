@@ -1,0 +1,96 @@
+{
+  "description": "With unlimited attempts, retryable failures keep retrying.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 0
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c1"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c1",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c2",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c3"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c3",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "retrying",
+        "retry_count": 3
+      }
+    }
+  ]
+}

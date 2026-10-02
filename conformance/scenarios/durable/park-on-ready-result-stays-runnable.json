@@ -1,0 +1,70 @@
+{
+  "description": "Parking on a result that already exists leaves the activity runnable.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "ck",
+      "value": 7
+    },
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "register_dependency",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    }
+  ]
+}

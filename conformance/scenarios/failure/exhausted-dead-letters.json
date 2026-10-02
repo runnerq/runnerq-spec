@@ -1,0 +1,95 @@
+{
+  "description": "The last allowed attempt's retryable failure dead-letters the activity with an error result. A terminal outcome doesn't count another attempt: retry_count stays at the failed attempts before the last.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 2
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "first",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "d",
+      "reason": "second",
+      "retryable": true,
+      "expect": {
+        "outcome": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "dead_letter",
+        "completed_at": {
+          "$notnull": true
+        },
+        "retry_count": 1,
+        "last_error": "second"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Err",
+        "data_subset": {
+          "error": "second",
+          "type": "dead_letter"
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Retrying",
+          "Dequeued",
+          "DeadLetter"
+        ]
+      }
+    }
+  ]
+}

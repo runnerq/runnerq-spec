@@ -1,0 +1,66 @@
+{
+  "description": "Completing stores the result and the activity is completed, released and remembered by its last worker.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": {
+        "answer": 42
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "completed",
+        "completed_at": {
+          "$notnull": true
+        },
+        "current_worker_id": {
+          "$null": true
+        },
+        "last_worker_id": {
+          "$token": "c"
+        }
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Ok",
+        "data": {
+          "answer": 42
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Completed"
+        ]
+      }
+    }
+  ]
+}

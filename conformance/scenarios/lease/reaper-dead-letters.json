@@ -1,0 +1,62 @@
+{
+  "description": "An expired lease on the last allowed attempt dead-letters the activity, without counting another attempt.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 1
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "op": "reap",
+      "limit": 10,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "dead_letter",
+        "retry_count": 0,
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Err"
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "DeadLetter"
+        ]
+      }
+    }
+  ]
+}

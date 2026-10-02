@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+Phase 5, first part: cross-language conformance.
+
+- `conformance/`: the driver protocol each SDK implements, and 29 scenarios
+  (claims, acks, failures, leases, durable waits, idempotency, retention, and
+  two mixed Go/TypeScript fleets) checked against the database by the
+  runner, `tools/conformance`.
+- Decided by the scenarios: a terminal outcome (dead letter) doesn't count
+  another attempt, so `retry_count + 1` is always the last attempt; the
+  reaper records the expired claim as `last_worker_id`; a batch claim returns
+  claims in claim order; an absent payload is stored as JSON null.
+
 ## 0.5.0
 
 Phase 4b: the conductor protocol. Breaking, before any release.

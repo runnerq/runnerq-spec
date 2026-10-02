@@ -1,0 +1,47 @@
+{
+  "description": "A claim renews its own lease, never shortening it; a stale claim can't.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      },
+      "lease_ms": 30000
+    },
+    {
+      "op": "renew",
+      "claim": "c",
+      "lease_ms": 120000,
+      "expect": {
+        "renewed": true
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": 1
+    },
+    {
+      "op": "renew",
+      "claim": "c",
+      "lease_ms": 120000,
+      "expect": {
+        "renewed": false
+      }
+    }
+  ]
+}

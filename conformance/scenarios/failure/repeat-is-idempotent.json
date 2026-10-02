@@ -1,0 +1,60 @@
+{
+  "description": "Repeating the same failure (a lost reply) doesn't count another attempt.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 3
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "retry_count": 1
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Retrying"
+        ]
+      }
+    }
+  ]
+}

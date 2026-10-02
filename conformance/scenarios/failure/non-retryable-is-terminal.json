@@ -1,0 +1,66 @@
+{
+  "description": "A non-retryable failure fails the activity at once, with an error result.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 3
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "bad input",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "failed",
+        "retry_count": 0,
+        "completed_at": {
+          "$notnull": true
+        },
+        "last_error": "bad input"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Err",
+        "data_subset": {
+          "error": "bad input",
+          "type": "non_retryable"
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Failed"
+        ]
+      }
+    }
+  ]
+}

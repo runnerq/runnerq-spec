@@ -1,0 +1,89 @@
+{
+  "description": "Work submitted and claimed by one SDK is completed by the other's storage, which honours the claim.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "by": "ts"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      },
+      "by": "go"
+    },
+    {
+      "op": "complete",
+      "by": "ts",
+      "claim": "c",
+      "value": {
+        "from": "ts"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Ok",
+        "data": {
+          "from": "ts"
+        }
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "by": "go"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "b"
+        ]
+      },
+      "by": "ts"
+    },
+    {
+      "op": "fail",
+      "by": "go",
+      "claim": "d",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "retrying",
+        "retry_count": 1
+      }
+    }
+  ]
+}

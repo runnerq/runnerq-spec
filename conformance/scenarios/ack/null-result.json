@@ -1,0 +1,43 @@
+{
+  "description": "A null result is stored as a result.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": null
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "state": "Ok",
+        "data": null
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "completed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "description": "A spawn under a stale claim is refused and creates nothing.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "old"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "expire_lease": "p"
+    },
+    {
+      "op": "reap",
+      "limit": 10
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "new"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "old",
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "expect_absent": "k"
+    },
+    {
+      "op": "submit",
+      "as": "k2",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "new"
+    },
+    {
+      "expect_row": {
+        "activity": "k2",
+        "status": "pending",
+        "parent_activity_id": {
+          "$id": "p"
+        },
+        "root_activity_id": {
+          "$id": "p"
+        },
+        "depth": 1
+      }
+    }
+  ]
+}

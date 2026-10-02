@@ -1,0 +1,29 @@
+{
+  "description": "With no_reuse, a duplicate key is refused.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "key": {
+        "key": "k1",
+        "on_duplicate": "no_reuse"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "key": {
+        "key": "k1",
+        "on_duplicate": "no_reuse"
+      },
+      "expect": {
+        "error": "duplicate_activity"
+      }
+    },
+    {
+      "expect_absent": "b"
+    }
+  ]
+}

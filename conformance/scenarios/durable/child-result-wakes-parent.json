@@ -1,0 +1,109 @@
+{
+  "description": "A parent parked on its child's result wakes when the child completes, and its claim clears the wait.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "register_dependency",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "waiting",
+        "waiting_result_id": {
+          "$id": "k"
+        }
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "ck",
+      "value": {
+        "ok": true
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "processing",
+        "waiting_result_id": {
+          "$null": true
+        }
+      }
+    }
+  ]
+}

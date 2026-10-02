@@ -64,3 +64,6 @@ jobs:
       - name: catalog.json is current
         working-directory: tools/catalog
         run: go vet . && go run . -dsn postgres://postgres:test@localhost:5432/postgres
+      - name: Conformance runner builds
+        working-directory: tools/conformance
+        run: go vet . && go build -o /dev/null .

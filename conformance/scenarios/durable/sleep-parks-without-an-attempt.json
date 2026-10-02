@@ -1,0 +1,89 @@
+{
+  "description": "Parking for a sleep releases the claim without counting an attempt; it's claimable once due.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "park",
+      "claim": "c",
+      "kind": "sleep",
+      "step": "sleep:cooldown",
+      "wake_in_s": 3600
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "waiting",
+        "retry_count": 0,
+        "current_worker_id": {
+          "$null": true
+        },
+        "scheduled_at": {
+          "$future": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Yielded"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing",
+        "retry_count": 0
+      }
+    }
+  ]
+}

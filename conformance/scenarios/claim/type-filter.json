@@ -1,0 +1,46 @@
+{
+  "description": "A claim takes only the types it names.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "x",
+      "type": "x"
+    },
+    {
+      "op": "submit",
+      "as": "y",
+      "type": "y"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "y"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "y"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "x",
+        "z"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "x"
+        ]
+      }
+    }
+  ]
+}

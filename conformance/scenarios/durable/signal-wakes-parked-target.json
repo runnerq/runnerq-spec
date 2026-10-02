@@ -1,0 +1,96 @@
+{
+  "description": "A signal stores its payload under the signal's checkpoint id and wakes an activity parked on it; the last signal wins.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "park",
+      "claim": "c",
+      "kind": "signal",
+      "step": "signal:approve",
+      "wake_in_s": 3600,
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "signal",
+          "approve"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "waiting"
+      }
+    },
+    {
+      "op": "signal",
+      "target": "a",
+      "name": "approve",
+      "payload": {
+        "by": "ops"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_result": {
+        "id": {
+          "$checkpoint": [
+            "a",
+            "signal",
+            "approve"
+          ]
+        },
+        "state": "Ok",
+        "data": {
+          "by": "ops"
+        }
+      }
+    },
+    {
+      "op": "signal",
+      "target": "a",
+      "name": "approve",
+      "payload": {
+        "by": "cto"
+      }
+    },
+    {
+      "expect_result": {
+        "id": {
+          "$checkpoint": [
+            "a",
+            "signal",
+            "approve"
+          ]
+        },
+        "data": {
+          "by": "cto"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "description": "Signalling an activity that doesn't exist is not_found.",
+  "steps": [
+    {
+      "op": "signal",
+      "target": "ghost",
+      "name": "approve",
+      "payload": 1,
+      "expect": {
+        "error": "not_found"
+      }
+    }
+  ]
+}

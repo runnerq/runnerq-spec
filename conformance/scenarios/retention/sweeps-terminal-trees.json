@@ -1,0 +1,76 @@
+{
+  "description": "Cleanup deletes a finished tree older than the policy, and everything it owns.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "checkpoint",
+      "claim": "c",
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "run",
+          "x"
+        ]
+      },
+      "state": "ok",
+      "data": 1,
+      "step": "run:x"
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": 1
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "completed"
+      }
+    },
+    {
+      "backdate": "a",
+      "column": "completed_at",
+      "seconds": 7200
+    },
+    {
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_absent": "a"
+    }
+  ]
+}

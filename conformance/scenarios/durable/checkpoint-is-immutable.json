@@ -1,0 +1,134 @@
+{
+  "description": "A checkpoint stores once; the same outcome again is fine, a different one conflicts, and a stale claim can't write.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "checkpoint",
+      "claim": "c",
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "run",
+          "charge"
+        ]
+      },
+      "state": "ok",
+      "data": {
+        "id": "ch_1"
+      },
+      "step": "run:charge"
+    },
+    {
+      "op": "checkpoint",
+      "claim": "c",
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "run",
+          "charge"
+        ]
+      },
+      "state": "ok",
+      "data": {
+        "id": "ch_1"
+      },
+      "step": "run:charge"
+    },
+    {
+      "op": "checkpoint",
+      "claim": "c",
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "run",
+          "charge"
+        ]
+      },
+      "state": "ok",
+      "data": {
+        "id": "ch_2"
+      },
+      "step": "run:charge",
+      "expect": {
+        "error": "checkpoint_conflict"
+      }
+    },
+    {
+      "expect_result": {
+        "id": {
+          "$checkpoint": [
+            "a",
+            "run",
+            "charge"
+          ]
+        },
+        "state": "Ok",
+        "data": {
+          "id": "ch_1"
+        },
+        "owner_activity_id": {
+          "$id": "a"
+        },
+        "step": "run:charge"
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "op": "reap",
+      "limit": 10
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "checkpoint",
+      "claim": "c",
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "run",
+          "other"
+        ]
+      },
+      "state": "ok",
+      "data": 1,
+      "step": "run:other",
+      "expect": {
+        "error": "claim_lost"
+      }
+    }
+  ]
+}

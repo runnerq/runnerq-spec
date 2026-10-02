@@ -1,0 +1,84 @@
+{
+  "description": "A claim marks the activity processing under the claim's token, with a future lease and a start time; a second claim finds nothing.",
+  "steps": [
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending",
+        "current_worker_id": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing",
+        "current_worker_id": {
+          "$token": "c"
+        },
+        "lease_deadline_ms": {
+          "$future": true
+        },
+        "started_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}

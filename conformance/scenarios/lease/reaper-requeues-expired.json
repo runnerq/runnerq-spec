@@ -1,0 +1,85 @@
+{
+  "description": "The reaper requeues only expired claims, counting the attempt and remembering the claim.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "ca",
+        "cb"
+      ],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "op": "reap",
+      "limit": 10,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending",
+        "retry_count": 1,
+        "current_worker_id": {
+          "$null": true
+        },
+        "last_worker_id": {
+          "$token": "ca"
+        },
+        "lease_deadline_ms": {
+          "$null": true
+        },
+        "started_at": {
+          "$null": true
+        },
+        "last_error": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Requeued"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "processing"
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "cb",
+      "value": 1
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "description": "An activity parked by one SDK is woken by a signal from the other, and its child result wakes a parent across languages.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "by": "go"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      },
+      "by": "go"
+    },
+    {
+      "op": "park",
+      "by": "go",
+      "claim": "c",
+      "kind": "signal",
+      "step": "signal:approve",
+      "wake_in_s": 3600,
+      "result_id": {
+        "$checkpoint": [
+          "a",
+          "signal",
+          "approve"
+        ]
+      }
+    },
+    {
+      "op": "signal",
+      "by": "ts",
+      "target": "a",
+      "name": "approve",
+      "payload": {
+        "ok": true
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent",
+      "by": "ts"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      },
+      "by": "ts"
+    },
+    {
+      "op": "submit",
+      "by": "ts",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "register_dependency",
+      "by": "ts",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "by": "ts",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      },
+      "by": "go"
+    },
+    {
+      "op": "complete",
+      "by": "go",
+      "claim": "ck",
+      "value": 3
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    }
+  ]
+}

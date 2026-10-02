@@ -7,7 +7,8 @@ The language-neutral contract every RunnerQ implementation agrees on. It holds:
 - the Postgres schema;
 - the storage protocol between workers and the data plane;
 - the conductor protocol between workers' agents and the control plane;
-- a cross-language conformance suite (later phase).
+- a cross-language conformance suite, which also runs Go and TypeScript
+  against one database.
 
 There is no runtime code here, only definitions, a generator and test data.
 
@@ -59,6 +60,8 @@ runnerq-spec/
 │   │                           examples (see its README)
 │   └── conductor/              agent ↔ Cloud messages and hosted worker
 │                               reports, as JSON Schema with examples
+├── conformance/                scenarios every SDK's storage must pass, and
+│                               the driver protocol (see its README)
 ├── schemacheck/                validates JSON against the schemas
 ├── serialization/
 │   ├── formats.md              json-v1, superjson-v1
@@ -67,7 +70,8 @@ runnerq-spec/
 ├── verify/                     reference implementation; checks every vector
 └── tools/
     ├── gen/                    constants, schema and protocols → Go / TypeScript
-    └── catalog/                schema → catalog.json, from a real Postgres
+    ├── catalog/                schema → catalog.json, from a real Postgres
+    └── conformance/            runs the scenarios against SDK drivers
 ```
 
 Later phases add these directories:
@@ -147,7 +151,7 @@ force a v2.
 | 3 | Schema: migrations, concurrent indexes and catalog; both SDKs migrate and validate from it | v0.3.0 |
 | 4a | Storage protocol and executor reports; generated code replaces `generate.py` | v0.4.0 |
 | 4b | Conductor protocol; generated types replace the hand copies | v0.5.0 |
-| 5 | Conformance scenarios, Go and TS drivers, mixed-fleet job, storaged protocol replay | |
+| 5 | Conformance scenarios, Go and TS drivers, mixed-fleet job, storaged protocol replay | v0.6.0: scenarios, runner, drivers |
 | 6 | Decide on SQL functions for state transitions | |
 
 ## Development

@@ -1,0 +1,102 @@
+{
+  "description": "A retryable failure counts the attempt and schedules a retry; no result is stored.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "max_attempts": 3
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "retrying",
+        "retry_count": 1,
+        "last_error": "boom",
+        "current_worker_id": {
+          "$null": true
+        },
+        "last_worker_id": {
+          "$token": "c"
+        },
+        "scheduled_at": {
+          "$future": true
+        }
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "absent": true
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Enqueued",
+          "Dequeued",
+          "Retrying"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "d"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing",
+        "retry_count": 1
+      }
+    }
+  ]
+}

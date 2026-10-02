@@ -1,0 +1,43 @@
+{
+  "description": "A duplicate key returns the existing activity instead of creating one.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "key": {
+        "key": "order-42",
+        "on_duplicate": "return_existing"
+      }
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "key": {
+        "key": "order-42",
+        "on_duplicate": "return_existing"
+      },
+      "expect": {
+        "existing": {
+          "$id": "a"
+        }
+      }
+    },
+    {
+      "expect_absent": "b"
+    },
+    {
+      "op": "lookup_key",
+      "key": [
+        "order-42",
+        "t"
+      ],
+      "expect": {
+        "id": {
+          "$id": "a"
+        }
+      }
+    }
+  ]
+}
