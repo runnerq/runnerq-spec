@@ -19,6 +19,12 @@
       "doc": "The prefix of a queue's LISTEN/NOTIFY channel announcing committed results; the payload is comma-joined activity IDs. The queue name follows."
     },
     {
+      "name": "default_max_retry_delay_seconds",
+      "type": "int",
+      "value": "3600",
+      "doc": "The cap on retry backoff when an activity sets none (max_retry_delay_seconds 0); vectors/retry_delay.json."
+    },
+    {
       "name": "business_key_prefix",
       "type": "string",
       "value": "rq:key:v2:",

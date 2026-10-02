@@ -298,7 +298,7 @@ func TestRetryDelay(t *testing.T) {
 		}
 		limit := in.MaxRetryDelay
 		if limit == 0 {
-			limit = 3600
+			limit = defaultMaxRetryDelay(t)
 		}
 		delay := new(big.Int).Lsh(big.NewInt(in.RetryDelay), uint(in.RetryCount+1))
 		if delay.Cmp(big.NewInt(limit)) > 0 {
@@ -382,4 +382,29 @@ func TestInternalEvents(t *testing.T) {
 		slices.Sort(out)
 		return out, nil
 	})
+}
+
+func defaultMaxRetryDelay(t *testing.T) int64 {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "constants", "constants.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		Constants []struct{ Name, Value string } `json:"constants"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range f.Constants {
+		if c.Name == "default_max_retry_delay_seconds" {
+			n, err := strconv.ParseInt(c.Value, 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return n
+		}
+	}
+	t.Fatal("constants.json lacks default_max_retry_delay_seconds")
+	return 0
 }

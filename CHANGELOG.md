@@ -6,6 +6,8 @@ Phase 2: the failure path and the query mappings.
 
 - Vectors: `attempts_remain` (the retry decision), `retry_delay` (backoff),
   `canonical_status`, `canonical_event`, `internal_events`.
+- Constant `default_max_retry_delay_seconds` (3600), and the `int` constant
+  type: a plain number in TypeScript.
 
 ## 0.1.0
 

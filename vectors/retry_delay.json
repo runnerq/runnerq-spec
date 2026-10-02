@@ -1,5 +1,5 @@
 {
-  "description": "RetryDelay(retry_count, retry_delay_seconds, max_retry_delay_seconds) is the whole number of seconds before the retry that follows attempt retry_count + 1: retry_delay_seconds × 2^(retry_count + 1), capped at max_retry_delay_seconds, where a cap of 0 means the default 3600. A base of 0 retries at once. Inputs are non-negative and both delays are below 2^31; within that range the exact product, however large, only matters through the cap.",
+  "description": "RetryDelay(retry_count, retry_delay_seconds, max_retry_delay_seconds) is the whole number of seconds before the retry that follows attempt retry_count + 1: retry_delay_seconds × 2^(retry_count + 1), capped at max_retry_delay_seconds, where a cap of 0 means default_max_retry_delay_seconds (constants.json, 3600). A base of 0 retries at once. Inputs are non-negative and both delays are below 2^31; within that range the exact product, however large, only matters through the cap.",
   "cases": [
     { "name": "no base delay", "input": { "max_retry_delay_seconds": 0, "retry_count": 0, "retry_delay_seconds": 0 }, "output": 0 },
     { "name": "no base delay, many failures", "input": { "max_retry_delay_seconds": 60, "retry_count": 50, "retry_delay_seconds": 0 }, "output": 0 },

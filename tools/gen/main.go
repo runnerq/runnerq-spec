@@ -26,7 +26,7 @@ type spec struct {
 
 type constant struct {
 	Name  string `json:"name"`
-	Type  string `json:"type"` // "string" or "int64"; int64 values are decimal strings
+	Type  string `json:"type"` // "string", "int" (fits a JavaScript number) or "int64"; values are strings
 	Value string `json:"value"`
 	Doc   string `json:"doc"`
 }
@@ -106,6 +106,10 @@ func load(root string) (*spec, error) {
 			if _, err := strconv.ParseInt(c.Value, 10, 64); err != nil {
 				return nil, fmt.Errorf("constant %q: %w", c.Name, err)
 			}
+		case "int":
+			if n, err := strconv.ParseInt(c.Value, 10, 64); err != nil || n > 1<<53 || n < -(1<<53) {
+				return nil, fmt.Errorf("constant %q: not an integer a JavaScript number holds exactly", c.Name)
+			}
 		default:
 			return nil, fmt.Errorf("constant %q: unknown type %q", c.Name, c.Type)
 		}
@@ -130,9 +134,12 @@ func goSource(s *spec, pkg string) ([]byte, error) {
 		name := goName(c.Name)
 		b.WriteString("\n")
 		writeComment(&b, "", "// ", name+" is "+lowerFirst(c.Doc))
-		if c.Type == "int64" {
+		switch c.Type {
+		case "int64":
 			fmt.Fprintf(&b, "const %s int64 = %s\n", name, c.Value)
-		} else {
+		case "int":
+			fmt.Fprintf(&b, "const %s = %s\n", name, c.Value)
+		default:
 			fmt.Fprintf(&b, "const %s = %q\n", name, c.Value)
 		}
 	}
@@ -160,7 +167,11 @@ func tsSource(s *spec) ([]byte, error) {
 			doc += " A decimal string: it does not fit a JavaScript number."
 		}
 		writeJSDoc(&b, "", doc)
-		fmt.Fprintf(&b, "export const %s = %s;\n", tsName(c.Name), quoteTS(c.Value))
+		value := quoteTS(c.Value)
+		if c.Type == "int" {
+			value = c.Value
+		}
+		fmt.Fprintf(&b, "export const %s = %s;\n", tsName(c.Name), value)
 	}
 	for _, e := range s.Enums {
 		b.WriteString("\n")
