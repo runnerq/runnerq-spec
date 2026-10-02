@@ -666,14 +666,14 @@ func tsProtocol(p *protocolDoc, prefix string, roots ...string) ([]byte, error) 
 			}
 			fmt.Fprintf(&b, "  %q: {\n    kind: %q;\n    from: %q;\n    data: %s;\n    response: %s;\n  };\n", m.str("type"), m.str("kind"), m.str("from"), strings.TrimPrefix(m.str("data"), "#/$defs/"), resp)
 		}
-		b.WriteString("}\n")
+		b.WriteString("}\n\n/** Every message type. */\nexport type MessageType = keyof Messages;\n")
 	}
 	if p.ops != nil {
 		b.WriteString("/** Each operation's arguments and result. */\nexport interface Operations {\n")
 		for _, op := range p.ops {
 			fmt.Fprintf(&b, "  %s: { args: %s; result: %s };\n", op.str("name"), p.argsName(op), p.tsType(op.get("result")))
 		}
-		b.WriteString("}\n\n/** Every message type. */\nexport type MessageType = keyof Messages;\n")
+		b.WriteString("}\n")
 	}
 	return bytes.TrimRight(b.Bytes(), "\n"), nil
 }

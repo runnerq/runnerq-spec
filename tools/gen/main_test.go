@@ -72,8 +72,8 @@ func TestGenerateStorage(t *testing.T) {
 		}
 	}
 	ts, _ := tsProtocol(p, "storage")
-	if !strings.Contains(string(ts), "Dequeue: { args: DequeueArgs; result: QueuedActivity | null };") {
-		t.Error("TypeScript lacks the Dequeue operation")
+	if !strings.Contains(string(ts), "Dequeue: { args: DequeueArgs; result: QueuedActivity | null };") || strings.Contains(string(ts), "MessageType") {
+		t.Error("TypeScript lacks the Dequeue operation, or has the conductor's MessageType")
 	}
 }
 
@@ -106,7 +106,7 @@ func TestGenerateConductor(t *testing.T) {
 		t.Error("the executor report's types are not just those it reaches")
 	}
 	ts, _ := tsProtocol(p, "conductor")
-	if !strings.Contains(string(ts), `"activities.list": {`) || !strings.Contains(string(ts), "export const activityStatusValues") {
+	if !strings.Contains(string(ts), `"activities.list": {`) || !strings.Contains(string(ts), "export const activityStatusValues") || !strings.Contains(string(ts), "export type MessageType = keyof Messages;") {
 		t.Error("TypeScript lacks the message map or enum values")
 	}
 }
