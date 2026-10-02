@@ -235,9 +235,6 @@ func TestApplicationKey(t *testing.T) {
 			}
 			return in.Stored, nil
 		}
-		if key, ok := strings.CutSuffix(in.Stored, "-"+in.ActivityType); ok && key != "" && in.ActivityType != "" {
-			return key, nil
-		}
 		return in.Stored, nil
 	})
 }
