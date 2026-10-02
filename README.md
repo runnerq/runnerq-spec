@@ -9,7 +9,7 @@ The language-neutral contract every RunnerQ implementation agrees on. It holds:
 
 There is no runtime code here, only definitions, a generator and test data.
 
-Consumers: [runnerq-go](https://github.com/alob-mtc/runnerq-go),
+Consumers: [runnerq-go](https://github.com/runnerq/runnerq-go),
 [runnerq-ts](https://github.com/runnerq/runnerq-ts),
 [cloud-storage-go](https://github.com/runnerq/cloud-storage-go),
 [cloud-storage-ts](https://github.com/runnerq/cloud-storage-ts) and RunnerQ Cloud.
@@ -41,7 +41,12 @@ runnerq-spec/
 │   ├── checkpoint_id.json
 │   ├── business_key.json
 │   ├── application_key.json
-│   └── step_key.json
+│   ├── step_key.json
+│   ├── attempts_remain.json    retry decision
+│   ├── retry_delay.json        backoff
+│   ├── canonical_status.json
+│   ├── canonical_event.json
+│   └── internal_events.json
 ├── serialization/
 │   ├── formats.md              json-v1, superjson-v1
 │   └── vectors/
@@ -55,7 +60,6 @@ Later phases add these directories:
 - `schema/postgres/` for migrations, a catalog snapshot and, possibly, SQL functions for state transitions.
 - `protocol/` for the storage, executor-report and conductor protocols as JSON Schema.
 - `conformance/` for data-driven scenarios and the mixed Go/TS fleet test.
-- More vectors: backoff, the retry decision and the canonical status mapping.
 
 ## Vectors
 
@@ -117,8 +121,8 @@ force a v2.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
-| 1 | Constants, pure-logic vectors, generator; both SDKs use the constants and test against the vectors | This release |
-| 2 | Extract backoff, the retry decision and status mapping into pure functions; add their vectors | |
+| 1 | Constants, pure-logic vectors, generator; both SDKs use the constants and test against the vectors | v0.1.0 |
+| 2 | Extract backoff and the retry decision into pure functions; vectors for them and the status and event mappings | v0.2.0 |
 | 3 | Schema: migrations and catalog snapshot; both validators read it | |
 | 4 | Protocols: storage, executor reports, conductor; generated types replace `generate.py` and the hand copies | |
 | 5 | Conformance scenarios, Go and TS drivers, mixed-fleet job, storaged protocol replay | |

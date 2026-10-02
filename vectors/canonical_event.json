@@ -1,0 +1,25 @@
+{
+  "description": "CanonicalEvent(event_type) maps a stored event type (runnerq_events.event_type) to the event type queries, streams and the console report. The table is given by the cases; an event type outside it is reported as \"other.\" + its lowercase form.",
+  "cases": [
+    { "name": "Enqueued", "input": { "event_type": "Enqueued" }, "output": "activity.created" },
+    { "name": "Scheduled", "input": { "event_type": "Scheduled" }, "output": "activity.scheduled" },
+    { "name": "Dequeued", "input": { "event_type": "Dequeued" }, "output": "attempt.started" },
+    { "name": "Completed", "input": { "event_type": "Completed" }, "output": "attempt.succeeded" },
+    { "name": "Failed", "input": { "event_type": "Failed" }, "output": "attempt.failed" },
+    { "name": "Retrying", "input": { "event_type": "Retrying" }, "output": "attempt.failed" },
+    { "name": "DeadLetter", "input": { "event_type": "DeadLetter" }, "output": "dead_letter.entered" },
+    { "name": "Requeued", "input": { "event_type": "Requeued" }, "output": "attempt.lease_expired" },
+    { "name": "Yielded", "input": { "event_type": "Yielded" }, "output": "wait.parked" },
+    { "name": "Signaled", "input": { "event_type": "Signaled" }, "output": "signal.received" },
+    { "name": "LeaseExtended", "input": { "event_type": "LeaseExtended" }, "output": "attempt.lease_extended" },
+    { "name": "ResultStored", "input": { "event_type": "ResultStored" }, "output": "result.stored" },
+    { "name": "SpawnLinked", "input": { "event_type": "SpawnLinked" }, "output": "child.linked" },
+    { "name": "Cancelled", "input": { "event_type": "Cancelled" }, "output": "activity.cancelled" },
+    { "name": "Retried", "input": { "event_type": "Retried" }, "output": "activity.retried" },
+    { "name": "Redriven", "input": { "event_type": "Redriven" }, "output": "dead_letter.redriven" },
+    { "name": "RunNow", "input": { "event_type": "RunNow" }, "output": "activity.run_now" },
+    { "name": "Rescheduled", "input": { "event_type": "Rescheduled" }, "output": "activity.rescheduled" },
+    { "name": "PriorityChanged", "input": { "event_type": "PriorityChanged" }, "output": "activity.priority_changed" },
+    { "name": "unknown becomes other.<lowercase>", "input": { "event_type": "CustomThing" }, "output": "other.customthing" }
+  ]
+}

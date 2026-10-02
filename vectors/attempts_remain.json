@@ -1,0 +1,13 @@
+{
+  "description": "AttemptsRemain(retry_count, max_retries) says whether a failed attempt may be followed by another. retry_count counts the attempts that failed before this one (so this was attempt retry_count + 1); max_retries is the attempt limit, 0 meaning unlimited. Another attempt is allowed when max_retries is 0 or retry_count + 1 < max_retries. A retryable failure with attempts remaining is retried; one without dead-letters; a non-retryable failure fails regardless. A lease expiry counts as a retryable failure (the activity goes back to pending without delay, or dead-letters). Both are non-negative integers.",
+  "cases": [
+    { "name": "unlimited, first failure", "input": { "max_retries": 0, "retry_count": 0 }, "output": true },
+    { "name": "unlimited, many failures", "input": { "max_retries": 0, "retry_count": 100000 }, "output": true },
+    { "name": "single attempt", "input": { "max_retries": 1, "retry_count": 0 }, "output": false },
+    { "name": "two attempts, first failed", "input": { "max_retries": 2, "retry_count": 0 }, "output": true },
+    { "name": "two attempts, second failed", "input": { "max_retries": 2, "retry_count": 1 }, "output": false },
+    { "name": "five attempts, fourth failed", "input": { "max_retries": 5, "retry_count": 3 }, "output": true },
+    { "name": "five attempts, fifth failed", "input": { "max_retries": 5, "retry_count": 4 }, "output": false },
+    { "name": "past the limit", "input": { "max_retries": 5, "retry_count": 7 }, "output": false }
+  ]
+}

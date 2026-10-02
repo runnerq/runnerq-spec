@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+Phase 2: the failure path and the query mappings.
+
+- Vectors: `attempts_remain` (the retry decision), `retry_delay` (backoff),
+  `canonical_status`, `canonical_event`, `internal_events`.
+
 ## 0.1.0
 
 First release (phase 1).

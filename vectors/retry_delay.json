@@ -1,0 +1,21 @@
+{
+  "description": "RetryDelay(retry_count, retry_delay_seconds, max_retry_delay_seconds) is the whole number of seconds before the retry that follows attempt retry_count + 1: retry_delay_seconds × 2^(retry_count + 1), capped at max_retry_delay_seconds, where a cap of 0 means the default 3600. A base of 0 retries at once. Inputs are non-negative and both delays are below 2^31; within that range the exact product, however large, only matters through the cap.",
+  "cases": [
+    { "name": "no base delay", "input": { "max_retry_delay_seconds": 0, "retry_count": 0, "retry_delay_seconds": 0 }, "output": 0 },
+    { "name": "no base delay, many failures", "input": { "max_retry_delay_seconds": 60, "retry_count": 50, "retry_delay_seconds": 0 }, "output": 0 },
+    { "name": "first retry doubles the base", "input": { "max_retry_delay_seconds": 0, "retry_count": 0, "retry_delay_seconds": 1 }, "output": 2 },
+    { "name": "second retry", "input": { "max_retry_delay_seconds": 0, "retry_count": 1, "retry_delay_seconds": 1 }, "output": 4 },
+    { "name": "base five, third retry", "input": { "max_retry_delay_seconds": 0, "retry_count": 2, "retry_delay_seconds": 5 }, "output": 40 },
+    { "name": "reaches the default cap", "input": { "max_retry_delay_seconds": 0, "retry_count": 11, "retry_delay_seconds": 1 }, "output": 3600 },
+    { "name": "just under the default cap", "input": { "max_retry_delay_seconds": 0, "retry_count": 10, "retry_delay_seconds": 1 }, "output": 2048 },
+    { "name": "explicit small cap", "input": { "max_retry_delay_seconds": 10, "retry_count": 3, "retry_delay_seconds": 1 }, "output": 10 },
+    { "name": "explicit large cap", "input": { "max_retry_delay_seconds": 86400, "retry_count": 15, "retry_delay_seconds": 60 }, "output": 86400 },
+    { "name": "under a large cap", "input": { "max_retry_delay_seconds": 86400, "retry_count": 9, "retry_delay_seconds": 60 }, "output": 61440 },
+    { "name": "cap equals the delay", "input": { "max_retry_delay_seconds": 16, "retry_count": 2, "retry_delay_seconds": 2 }, "output": 16 },
+    { "name": "largest cap, product just past it", "input": { "max_retry_delay_seconds": 2147483647, "retry_count": 30, "retry_delay_seconds": 1 }, "output": 2147483647 },
+    { "name": "largest cap, product under it", "input": { "max_retry_delay_seconds": 2147483647, "retry_count": 29, "retry_delay_seconds": 1 }, "output": 1073741824 },
+    { "name": "exponent past 52", "input": { "max_retry_delay_seconds": 2147483647, "retry_count": 61, "retry_delay_seconds": 1 }, "output": 2147483647 },
+    { "name": "exponent past 62", "input": { "max_retry_delay_seconds": 2147483647, "retry_count": 1000, "retry_delay_seconds": 3 }, "output": 2147483647 },
+    { "name": "large base", "input": { "max_retry_delay_seconds": 0, "retry_count": 0, "retry_delay_seconds": 2147483647 }, "output": 3600 }
+  ]
+}

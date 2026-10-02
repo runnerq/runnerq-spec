@@ -11,9 +11,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -270,5 +272,114 @@ func TestPlainJSON(t *testing.T) {
 			return part, nil
 		}
 		return in.Data, nil
+	})
+}
+
+func TestAttemptsRemain(t *testing.T) {
+	check(t, "vectors/attempts_remain.json", func(in struct {
+		RetryCount int64 `json:"retry_count"`
+		MaxRetries int64 `json:"max_retries"`
+	}) (any, error) {
+		if in.RetryCount < 0 || in.MaxRetries < 0 {
+			return nil, fmt.Errorf("negative input")
+		}
+		return in.MaxRetries == 0 || in.RetryCount+1 < in.MaxRetries, nil
+	})
+}
+
+func TestRetryDelay(t *testing.T) {
+	check(t, "vectors/retry_delay.json", func(in struct {
+		RetryCount    int64 `json:"retry_count"`
+		RetryDelay    int64 `json:"retry_delay_seconds"`
+		MaxRetryDelay int64 `json:"max_retry_delay_seconds"`
+	}) (any, error) {
+		if in.RetryCount < 0 || in.RetryDelay < 0 || in.RetryDelay >= 1<<31 || in.MaxRetryDelay < 0 || in.MaxRetryDelay >= 1<<31 {
+			return nil, fmt.Errorf("input outside the spec's range")
+		}
+		limit := in.MaxRetryDelay
+		if limit == 0 {
+			limit = 3600
+		}
+		delay := new(big.Int).Lsh(big.NewInt(in.RetryDelay), uint(in.RetryCount+1))
+		if delay.Cmp(big.NewInt(limit)) > 0 {
+			return limit, nil
+		}
+		return delay.Int64(), nil
+	})
+}
+
+func TestCanonicalStatus(t *testing.T) {
+	check(t, "vectors/canonical_status.json", func(in struct {
+		Status string `json:"status"`
+	}) (any, error) {
+		switch in.Status {
+		case "processing":
+			return "running", nil
+		case "retrying":
+			return "scheduled", nil
+		}
+		return in.Status, nil
+	})
+}
+
+// The event table is the canonical_event cases themselves. These check the
+// fallback rule there, and that internal_events is the table's inverse.
+func eventTable(t *testing.T) map[string]string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "vectors", "canonical_event.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		Cases []struct {
+			Input struct {
+				EventType string `json:"event_type"`
+			} `json:"input"`
+			Output string `json:"output"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatal(err)
+	}
+	table := map[string]string{}
+	for _, c := range f.Cases {
+		if c.Output != "other."+strings.ToLower(c.Input.EventType) {
+			table[c.Input.EventType] = c.Output
+		}
+	}
+	return table
+}
+
+func TestCanonicalEvent(t *testing.T) {
+	table := eventTable(t)
+	check(t, "vectors/canonical_event.json", func(in struct {
+		EventType string `json:"event_type"`
+	}) (any, error) {
+		if c, ok := table[in.EventType]; ok {
+			if !strings.Contains(c, ".") || strings.HasPrefix(c, "other.") {
+				return nil, fmt.Errorf("%q is not a canonical type", c)
+			}
+			return c, nil
+		}
+		return "other." + strings.ToLower(in.EventType), nil
+	})
+}
+
+func TestInternalEvents(t *testing.T) {
+	table := eventTable(t)
+	check(t, "vectors/internal_events.json", func(in struct {
+		Type string `json:"type"`
+	}) (any, error) {
+		out := []string{}
+		for internal, canonical := range table {
+			if canonical == in.Type {
+				out = append(out, internal)
+			}
+		}
+		if rest, ok := strings.CutPrefix(in.Type, "other."); ok && len(out) == 0 {
+			out = append(out, rest)
+		}
+		slices.Sort(out)
+		return out, nil
 	})
 }

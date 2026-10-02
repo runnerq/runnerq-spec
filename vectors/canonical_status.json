@@ -1,0 +1,15 @@
+{
+  "description": "CanonicalStatus(status) maps a stored activity status to the status queries and the console report: processing is running, retrying is scheduled, and every other status (pending, scheduled, waiting, completed, failed, dead_letter, cancelled, or one this spec doesn't know) is reported as stored.",
+  "cases": [
+    { "name": "pending", "input": { "status": "pending" }, "output": "pending" },
+    { "name": "scheduled", "input": { "status": "scheduled" }, "output": "scheduled" },
+    { "name": "retrying", "input": { "status": "retrying" }, "output": "scheduled" },
+    { "name": "processing", "input": { "status": "processing" }, "output": "running" },
+    { "name": "waiting", "input": { "status": "waiting" }, "output": "waiting" },
+    { "name": "completed", "input": { "status": "completed" }, "output": "completed" },
+    { "name": "failed", "input": { "status": "failed" }, "output": "failed" },
+    { "name": "dead_letter", "input": { "status": "dead_letter" }, "output": "dead_letter" },
+    { "name": "cancelled", "input": { "status": "cancelled" }, "output": "cancelled" },
+    { "name": "unknown passes through", "input": { "status": "paused" }, "output": "paused" }
+  ]
+}
