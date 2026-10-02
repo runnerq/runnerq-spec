@@ -91,6 +91,9 @@ A step is one of:
   - `expect_result`: a `runnerq_results` row.
   - `expect_absent`: the activity and everything it owns are gone.
 
+After the last step the runner also checks every event the scenario wrote
+against `schema/postgres/events.schema.json`.
+
 Expected values are JSON, or matchers: `{"$id": name}`, `{"$token": claim}`,
 `{"$null": true}`, `{"$notnull": true}`, `{"$future": true}`,
 `{"$past": true}`, `{"$checkpoint": [name, kind, step]}` (a checkpoint id).

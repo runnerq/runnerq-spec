@@ -10,6 +10,7 @@ database, so all of them must apply and check the schema the same way.
 | `concurrent_indexes.json` | Indexes built with `CREATE INDEX CONCURRENTLY` after the migrations, and the indexes they replace. |
 | `retired.json` | Columns the migrations remove after moving their data. |
 | `catalog.json` | What all of the above produce, read from Postgres by `tools/catalog`. CI checks it on Postgres 16, 17 and 18. |
+| `events.schema.json` | The detail each stored event type carries (`runnerq_events.detail`). The conformance runner checks every event a scenario writes against it. |
 
 ## Bringing a database up to date
 

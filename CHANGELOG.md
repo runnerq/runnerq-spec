@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+
+- `schema/postgres/events.schema.json`: the detail every implementation
+  writes for each stored event type (`runnerq_events.detail`), so an event
+  reads the same whichever SDK wrote it. The conformance runner checks every
+  event a scenario writes against it.
+
 ## 0.6.0
 
 Phase 5, first part: cross-language conformance.

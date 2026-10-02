@@ -1,0 +1,437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/runnerq/runnerq-spec/schema/postgres/events.schema.json",
+  "title": "RunnerQ stored events",
+  "description": "runnerq_events.detail for each event_type: what every implementation writes, so an event reads the same whichever SDK wrote it. Fields listed nowhere are not written.",
+  "$defs": {
+    "Enqueued": {
+      "description": "The activity was submitted, runnable now.",
+      "type": "object",
+      "properties": {
+        "activity_type": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      },
+      "required": [
+        "activity_type",
+        "priority"
+      ],
+      "additionalProperties": false
+    },
+    "Scheduled": {
+      "description": "The activity was submitted to run later.",
+      "type": "object",
+      "properties": {
+        "activity_type": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "activity_type",
+        "priority",
+        "scheduled_at"
+      ],
+      "additionalProperties": false
+    },
+    "Dequeued": {
+      "description": "An attempt claimed the activity; worker_id is the claim.",
+      "type": "object",
+      "properties": {
+        "activity_type": {
+          "type": "string"
+        },
+        "lease_deadline_ms": {
+          "type": "integer",
+          "description": "The lease's end, epoch milliseconds."
+        }
+      },
+      "required": [
+        "activity_type",
+        "lease_deadline_ms"
+      ],
+      "additionalProperties": false
+    },
+    "Completed": {
+      "description": "The attempt succeeded and its result is stored.",
+      "type": "object",
+      "properties": {
+        "result_stored": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "result_stored"
+      ],
+      "additionalProperties": false
+    },
+    "Retrying": {
+      "description": "The attempt failed retryably; another is scheduled.",
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "retry_count": {
+          "type": "integer",
+          "description": "Failed attempts so far.",
+          "minimum": 1
+        },
+        "scheduled_at": {
+          "type": "string",
+          "description": "When the retry is due.",
+          "format": "date-time"
+        },
+        "failure": {
+          "description": "The failure's recorded details, as the SDK captured them."
+        }
+      },
+      "required": [
+        "error",
+        "retry_count",
+        "scheduled_at"
+      ],
+      "additionalProperties": false
+    },
+    "Failed": {
+      "description": "The attempt failed non-retryably; the activity failed.",
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "failure": {
+          "description": "The failure's recorded details, as the SDK captured them."
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "DeadLetter": {
+      "description": "The activity was dead-lettered.",
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "description": "attempts_exhausted: a retryable failure on the last allowed attempt; lease_expired: the reaper found the last allowed attempt's lease expired.",
+          "enum": [
+            "attempts_exhausted",
+            "lease_expired"
+          ]
+        },
+        "failure": {
+          "description": "The failure's recorded details, as the SDK captured them."
+        }
+      },
+      "required": [
+        "error",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Requeued": {
+      "description": "The reaper found the attempt's lease expired and made the activity runnable again.",
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "lease_expired"
+          ]
+        },
+        "error": {
+          "type": "string"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "reason",
+        "error",
+        "retry_count"
+      ],
+      "additionalProperties": false
+    },
+    "Yielded": {
+      "description": "The attempt parked the activity.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sleep",
+            "signal",
+            "await"
+          ]
+        },
+        "step": {
+          "type": "string"
+        },
+        "wake_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "result_id": {
+          "description": "The result it waits for, or null for a sleep.",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ready": {
+          "type": "boolean",
+          "description": "The awaited result already existed, so it stayed runnable."
+        }
+      },
+      "required": [
+        "kind",
+        "step",
+        "wake_at",
+        "result_id",
+        "ready"
+      ],
+      "additionalProperties": false
+    },
+    "Signaled": {
+      "description": "A signal was stored, by the storage API or a command.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "signal_id": {
+          "type": "string",
+          "description": "checkpoint_id(activity, \"signal\", name).",
+          "format": "uuid"
+        },
+        "woke": {
+          "type": "boolean",
+          "description": "It woke the activity."
+        },
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        }
+      },
+      "required": [
+        "name",
+        "signal_id",
+        "woke"
+      ],
+      "additionalProperties": false
+    },
+    "LeaseExtended": {
+      "description": "The attempt's lease was extended.",
+      "type": "object",
+      "properties": {
+        "lease_deadline_ms": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lease_deadline_ms"
+      ],
+      "additionalProperties": false
+    },
+    "ResultStored": {
+      "description": "A checkpoint's or signal's result was stored for the activity.",
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "Ok",
+            "Err"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnLinked": {
+      "description": "An existing activity was linked as a child of another (a returned-existing key).",
+      "type": "object",
+      "properties": {
+        "parent_activity_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "parent_activity_id"
+      ],
+      "additionalProperties": false
+    },
+    "Cancelled": {
+      "description": "A command cancelled the activity.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "from": {
+          "type": "string",
+          "description": "The status it was cancelled from."
+        }
+      },
+      "required": [
+        "command_id",
+        "from"
+      ],
+      "additionalProperties": false
+    },
+    "Retried": {
+      "description": "A command made a failed or cancelled activity run again.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "from": {
+          "type": "string"
+        },
+        "reset_attempts": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "command_id",
+        "from",
+        "reset_attempts"
+      ],
+      "additionalProperties": false
+    },
+    "Redriven": {
+      "description": "A command made a dead-lettered activity run again.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "from": {
+          "type": "string"
+        },
+        "reset_attempts": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "command_id",
+        "from",
+        "reset_attempts"
+      ],
+      "additionalProperties": false
+    },
+    "RunNow": {
+      "description": "A command made the activity runnable now.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        }
+      },
+      "required": [
+        "command_id"
+      ],
+      "additionalProperties": false
+    },
+    "Rescheduled": {
+      "description": "A command moved the activity's scheduled time.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "command_id",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "PriorityChanged": {
+      "description": "A command changed the activity's priority.",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        }
+      },
+      "required": [
+        "command_id",
+        "priority"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

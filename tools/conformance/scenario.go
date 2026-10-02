@@ -18,6 +18,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/runnerq/runnerq-spec/schemacheck"
 )
 
 type scenario struct {
@@ -64,6 +66,7 @@ type claim struct {
 
 type runner struct {
 	db      *pgxpool.Pool
+	events  *schemacheck.Schema
 	drivers map[string]*driver
 	first   *driver
 	dsn     string
@@ -93,6 +96,36 @@ func (r *runner) run(ctx context.Context, sc *scenario) error {
 		if err := r.step(ctx, step); err != nil {
 			return fmt.Errorf("step %d %s: %w", i+1, compactJSON(raw), err)
 		}
+	}
+	return r.checkEvents(ctx)
+}
+
+// checkEvents validates every event the scenario wrote against the stored
+// events' schema (schema/postgres/events.schema.json): one shape per event
+// type, whichever implementation wrote it.
+func (r *runner) checkEvents(ctx context.Context) error {
+	rows, err := r.db.Query(ctx, `SELECT event_type, COALESCE(detail, 'null'::jsonb)::text FROM runnerq_events WHERE queue_name = $1 ORDER BY id`, r.queue)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var bad []string
+	for rows.Next() {
+		var typ, detail string
+		if err := rows.Scan(&typ, &detail); err != nil {
+			return err
+		}
+		if _, ok := r.events.Doc["$defs"].(map[string]any)[typ]; !ok {
+			bad = append(bad, fmt.Sprintf("%s: not a known event type", typ))
+		} else if err := r.events.CheckJSON(typ, []byte(detail)); err != nil {
+			bad = append(bad, fmt.Sprintf("%s %s: %v", typ, detail, err))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(bad) > 0 {
+		return fmt.Errorf("events that break schema/postgres/events.schema.json:\n       %s", strings.Join(bad, "\n       "))
 	}
 	return nil
 }

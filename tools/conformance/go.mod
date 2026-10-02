@@ -2,7 +2,10 @@ module github.com/runnerq/runnerq-spec/tools/conformance
 
 go 1.27
 
-require github.com/jackc/pgx/v5 v5.8.0
+require (
+	github.com/jackc/pgx/v5 v5.8.0
+	github.com/runnerq/runnerq-spec v0.0.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -11,3 +14,5 @@ require (
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 )
+
+replace github.com/runnerq/runnerq-spec => ../..

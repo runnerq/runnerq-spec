@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/runnerq/runnerq-spec/schemacheck"
 )
 
 type driverFlags []string
@@ -69,6 +71,10 @@ func main() {
 		byName[name] = d
 	}
 
+	events, err := schemacheck.Load(filepath.Join(*dir, "..", "..", "schema", "postgres", "events.schema.json"))
+	if err != nil {
+		fail(err)
+	}
 	paths, err := scenarioPaths(*dir)
 	if err != nil {
 		fail(err)
@@ -92,7 +98,7 @@ func main() {
 			continue
 		}
 		start := time.Now()
-		r := &runner{db: db, drivers: byName, first: started[0], dsn: *dsn}
+		r := &runner{db: db, events: events, drivers: byName, first: started[0], dsn: *dsn}
 		if err := r.run(ctx, sc); err != nil {
 			failed++
 			fmt.Printf("FAIL %s\n     %v\n", rel, err)
