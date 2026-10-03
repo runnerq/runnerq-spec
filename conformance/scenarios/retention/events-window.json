@@ -1,0 +1,171 @@
+{
+  "description": "An events window trims the events of finished activities once they are older than it, apart from their tree; events of unfinished activities and newer events stay.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "done",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "retry",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "sleeper",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "limit": 3,
+      "expect": {
+        "claims": [
+          "done",
+          "retry",
+          "sleeper"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c1",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c2",
+      "reason": "x",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "op": "park",
+      "claim": "c3",
+      "kind": "sleep",
+      "step": "sleep:long",
+      "wake_in_s": 86400
+    },
+    {
+      "make_due": "done"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c4"
+      ],
+      "expect": {
+        "claims": [
+          "done"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c4",
+      "value": 1
+    },
+    {
+      "op": "submit",
+      "as": "fresh",
+      "type": "t",
+      "max_attempts": 1
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c5"
+      ],
+      "expect": {
+        "claims": [
+          "fresh"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c5",
+      "reason": "x",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "backdate_events": "done",
+      "seconds": 7200
+    },
+    {
+      "backdate_events": "retry",
+      "seconds": 7200
+    },
+    {
+      "backdate_events": "sleeper",
+      "seconds": 7200
+    },
+    {
+      "op": "cleanup",
+      "events_s": 3600,
+      "batch": 100,
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "done",
+        "types": []
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "done",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "retry",
+        "types": [
+          "Retrying"
+        ]
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "sleeper",
+        "types": [
+          "Yielded"
+        ]
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "fresh",
+        "types": [
+          "Failed"
+        ]
+      }
+    }
+  ]
+}

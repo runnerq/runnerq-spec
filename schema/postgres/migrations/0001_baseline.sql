@@ -55,25 +55,15 @@ END $$;
 
 -- Indexes for efficient queries
 --
--- NOTE: the hot dequeue indexes (idx_runnerq_dequeue_effective_v2,
--- idx_runnerq_dequeue_order_v2) and the query indexes are NOT created here:
--- see concurrent_indexes.json. A plain CREATE INDEX takes a SHARE lock that
--- blocks all writes on runnerq_activities for the duration of the build; at
--- boot, on a hot queue, that stalls every enqueue/dequeue/ack in the cluster.
-CREATE INDEX IF NOT EXISTS idx_runnerq_activities_processing
-    ON runnerq_activities(queue_name, lease_deadline_ms)
-    WHERE status = 'processing';
-CREATE INDEX IF NOT EXISTS idx_runnerq_completed_non_cron
-    ON runnerq_activities(queue_name, completed_at DESC, created_at DESC)
-    WHERE status IN ('completed', 'failed')
-      AND (metadata->>'source') IS DISTINCT FROM 'cron';
-CREATE INDEX IF NOT EXISTS idx_runnerq_completed_cron
-    ON runnerq_activities(queue_name, completed_at DESC, created_at DESC)
-    WHERE status IN ('completed', 'failed')
-      AND metadata->>'source' = 'cron';
-CREATE INDEX IF NOT EXISTS idx_runnerq_dead_letter
-    ON runnerq_activities(queue_name, completed_at DESC)
-    WHERE status = 'dead_letter';
+-- NOTE: indexes on runnerq_activities and runnerq_results are NOT created
+-- here: see concurrent_indexes.json. A plain CREATE INDEX takes a SHARE lock
+-- that blocks all writes on the table for the duration of the build; at boot,
+-- on a hot queue, that stalls every enqueue/dequeue/ack in the cluster.
+--
+-- Every index on runnerq_activities is written again by each status change,
+-- so an index must earn its place. Room left on each page lets lease renewals,
+-- which change no indexed column, update in place (HOT).
+ALTER TABLE runnerq_activities SET (fillfactor = 85);
 
 -- Migration: add column for existing deployments (idempotent, metadata-only on PG 11+).
 ALTER TABLE runnerq_activities
@@ -89,17 +79,6 @@ ALTER TABLE runnerq_activities
 CREATE INDEX IF NOT EXISTS idx_runnerq_parent_id
     ON runnerq_activities(parent_activity_id)
     WHERE parent_activity_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_runnerq_root_id
-    ON runnerq_activities(root_activity_id)
-    WHERE root_activity_id IS NOT NULL;
--- Partial index for the workflows-list view (parent IS NULL = roots only),
--- ordered for the typical "newest first" query.
-CREATE INDEX IF NOT EXISTS idx_runnerq_root_only
-    ON runnerq_activities(queue_name, created_at DESC)
-    WHERE parent_activity_id IS NULL;
-CREATE INDEX IF NOT EXISTS idx_runnerq_root_status
-    ON runnerq_activities(queue_name, status)
-    WHERE parent_activity_id IS NULL;
 
 -- Idempotency keys table
 CREATE TABLE IF NOT EXISTS runnerq_idempotency (
@@ -111,7 +90,8 @@ CREATE TABLE IF NOT EXISTS runnerq_idempotency (
     PRIMARY KEY (queue_name, idempotency_key)
 );
 
--- Events table (permanent - full history)
+-- Events: what the activity row can't say (events.schema.json). Retention
+-- removes them with their tree, or sooner with an events window.
 CREATE TABLE IF NOT EXISTS runnerq_events (
     id BIGSERIAL PRIMARY KEY,
     activity_id UUID NOT NULL,
@@ -124,7 +104,8 @@ CREATE TABLE IF NOT EXISTS runnerq_events (
 
 CREATE INDEX IF NOT EXISTS idx_runnerq_events_activity
     ON runnerq_events(activity_id, created_at DESC);
--- Cursor tailing for the live event stream (EventStream reads id > cursor).
+-- Per-queue log order: the live stream's tail (id > cursor) and the events
+-- retention walk.
 CREATE INDEX IF NOT EXISTS idx_runnerq_events_queue_seq
     ON runnerq_events(queue_name, id);
 
@@ -145,28 +126,19 @@ CREATE TABLE IF NOT EXISTS runnerq_results (
 -- could never be garbage-collected. NULL on legacy rows (never swept).
 ALTER TABLE runnerq_results
     ADD COLUMN IF NOT EXISTS owner_activity_id UUID;
-CREATE INDEX IF NOT EXISTS idx_runnerq_results_owner
-    ON runnerq_results(queue_name, owner_activity_id)
-    WHERE owner_activity_id IS NOT NULL;
 
 -- step is the human identity of a checkpoint row, "kind:name" (e.g.
 -- "run:create-transfer", "sleep:retry-backoff") — the same string the checkpoint
 -- ID is derived from, persisted so the console can show a workflow's durable
 -- step history (the checkpoint ID itself is a one-way hash). NULL for an
 -- activity's own final result and for legacy rows. No dedicated index: read only
--- by owner (already indexed above) on the console path, never on a hot path.
+-- by owner (idx_runnerq_results_by_owner) on the console path, never on a hot path.
 ALTER TABLE runnerq_results
     ADD COLUMN IF NOT EXISTS step TEXT;
 
 -- serialization names the result data's encoding, as for inputs.
 ALTER TABLE runnerq_results
     ADD COLUMN IF NOT EXISTS serialization TEXT NOT NULL DEFAULT 'json-v1';
-
--- Retention sweep: find roots that have been terminal longer than the TTL.
-CREATE INDEX IF NOT EXISTS idx_runnerq_root_terminal_age
-    ON runnerq_activities(queue_name, status, completed_at)
-    WHERE parent_activity_id IS NULL
-      AND status IN ('completed', 'failed', 'dead_letter');
 
 -- Worker pools: one row per live engine instance. Heartbeats let us tell
 -- which pools are still alive for cluster-wide capacity reporting.
@@ -207,5 +179,3 @@ CREATE TABLE IF NOT EXISTS runnerq_dependencies (
 );
 CREATE INDEX IF NOT EXISTS idx_runnerq_dependencies_result
  ON runnerq_dependencies(queue_name, result_id);
-CREATE INDEX IF NOT EXISTS idx_runnerq_dependencies_producer
- ON runnerq_dependencies(queue_name, producer_activity_id);

@@ -156,12 +156,29 @@ func build(ctx context.Context, dsn, root string) (*Catalog, error) {
 		Columns []struct {
 			Name string `json:"name"`
 		} `json:"columns"`
+		Indexes []struct {
+			Name string `json:"name"`
+		} `json:"indexes"`
 	}
 	if err := readJSON(filepath.Join(root, "retired.json"), &retired); err != nil {
 		return nil, err
 	}
 	for _, col := range retired.Columns {
 		c.Retired.Columns = append(c.Retired.Columns, col.Name)
+	}
+	for _, idx := range retired.Indexes {
+		if slices.Contains(c.Retired.Indexes, idx.Name) {
+			return nil, fmt.Errorf("retired.json: %s is already replaced in concurrent_indexes.json", idx.Name)
+		}
+		c.Retired.Indexes = append(c.Retired.Indexes, idx.Name)
+	}
+	var lingering []string
+	if err := conn.QueryRow(ctx, `SELECT coalesce(array_agg(relname::text ORDER BY relname), '{}') FROM pg_class
+		WHERE relnamespace = current_schema()::regnamespace AND relname = ANY($1)`, c.Retired.Indexes).Scan(&lingering); err != nil {
+		return nil, err
+	}
+	if len(lingering) > 0 {
+		return nil, fmt.Errorf("the migrations still create retired indexes: %s", strings.Join(lingering, ", "))
 	}
 	c.Description = description
 

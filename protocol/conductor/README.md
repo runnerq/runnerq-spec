@@ -243,9 +243,16 @@ A durable checkpoint inside an activity.
 An entry in an activity's lifecycle history.
 
 ```json
-{"id":"1203","cursor":"1203","activity_id":"…","type":"attempt.started","at":"…",
+{"id":"1203","cursor":"1203","activity_id":"…","type":"attempt.failed","at":"…",
  "executor_id":"…","attempt":2,"detail":{…}}
 ```
+
+Events are stored only for what an activity can't show itself
+(`schema/postgres/events.schema.json`): an attempt ending other than in
+success, waits, signals, links and commands. `activity.created`,
+`activity.scheduled`, `attempt.started` and `attempt.succeeded` are an
+activity's `created_at`, `scheduled_for`, `started_at` and `completed_at`, and
+are never in `events.list` or a stream.
 
 Event types:
 
