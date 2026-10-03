@@ -366,6 +366,11 @@
           "description": "How often to send executor.report.",
           "minimum": 0,
           "x-go-type": "int64"
+        },
+        "notices": {
+          "type": "boolean",
+          "description": "Send activity.notices. The gateway turns it on while someone is watching the app and off when no one is. Absent in a welcome is off; absent in a config.update is unchanged.",
+          "x-go-pointer": true
         }
       },
       "required": [],
@@ -1829,6 +1834,91 @@
         "since_cursor"
       ],
       "additionalProperties": false
+    },
+    "NoticeType": {
+      "type": "string",
+      "description": "A lifecycle change no event is stored for: the activity's own times say it.",
+      "enum": [
+        "activity.created",
+        "activity.scheduled",
+        "attempt.started",
+        "attempt.succeeded"
+      ],
+      "x-go-names": [
+        "NoticeCreated",
+        "NoticeScheduled",
+        "NoticeAttemptStarted",
+        "NoticeAttemptSucceeded"
+      ]
+    },
+    "Notice": {
+      "type": "object",
+      "description": "A lifecycle change an executor made, announced live. Never stored and never resent: it has no cursor, and a consumer that missed it reads the activity instead.",
+      "properties": {
+        "activity_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/NoticeType"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "queue": {
+          "type": "string"
+        },
+        "activity_type": {
+          "type": "string"
+        },
+        "root_id": {
+          "type": "string",
+          "description": "The activity's workflow root; the activity's own id for a root."
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int",
+          "description": "For attempt.started and attempt.succeeded."
+        },
+        "executor_id": {
+          "type": "string",
+          "description": "The executor that made the change, when it was one."
+        }
+      },
+      "required": [
+        "activity_id",
+        "type",
+        "at",
+        "queue",
+        "activity_type",
+        "root_id"
+      ],
+      "additionalProperties": false
+    },
+    "ActivityNotices": {
+      "type": "object",
+      "description": "A batch of notices, oldest first.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Notice"
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 1,
+          "x-go-type": "int64",
+          "description": "Notices this agent discarded since its last batch, when it produced them faster than it could send."
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
     }
   },
   "x-messages": [
@@ -1991,6 +2081,13 @@
       "from": "agent",
       "data": "#/$defs/ExecutorState",
       "description": "Every config.report_interval_ms, without running."
+    },
+    {
+      "type": "activity.notices",
+      "kind": "evt",
+      "from": "agent",
+      "data": "#/$defs/ActivityNotices",
+      "description": "Only while config.notices is on; at most every 250 ms."
     },
     {
       "type": "config.update",

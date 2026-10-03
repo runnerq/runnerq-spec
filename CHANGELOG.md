@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- Conductor protocol: `activity.notices`, an agent event announcing the
+  lifecycle changes no event is stored for (`activity.created`,
+  `activity.scheduled`, `attempt.started`, `attempt.succeeded`), sent only
+  while `SessionConfig.notices` is on. Best effort: no cursor, never stored.
+
 ## 0.7.0
 
 Leaner storage: about half the writes and storage per activity, measured on
