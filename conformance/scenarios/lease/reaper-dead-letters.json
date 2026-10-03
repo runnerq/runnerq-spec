@@ -52,8 +52,6 @@
       "expect_events": {
         "activity": "a",
         "types": [
-          "Enqueued",
-          "Dequeued",
           "DeadLetter"
         ]
       }

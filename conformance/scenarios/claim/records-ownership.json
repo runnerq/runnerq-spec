@@ -27,9 +27,7 @@
     {
       "expect_events": {
         "activity": "a",
-        "types": [
-          "Enqueued"
-        ]
+        "types": []
       }
     },
     {
@@ -65,10 +63,7 @@
     {
       "expect_events": {
         "activity": "a",
-        "types": [
-          "Enqueued",
-          "Dequeued"
-        ]
+        "types": []
       }
     },
     {

@@ -1,11 +1,11 @@
 {
-  "description": "Repeating the same failure (a lost reply) doesn't count another attempt.",
+  "description": "Without an events window, events stay as long as their tree.",
   "steps": [
     {
       "op": "submit",
       "as": "a",
       "type": "t",
-      "max_attempts": 3
+      "max_attempts": 1
     },
     {
       "op": "claim",
@@ -15,7 +15,6 @@
       "as": [
         "c"
       ],
-      "limit": 1,
       "expect": {
         "claims": [
           "a"
@@ -25,32 +24,30 @@
     {
       "op": "fail",
       "claim": "c",
-      "reason": "boom",
-      "retryable": true,
+      "reason": "x",
+      "retryable": false,
       "expect": {
-        "outcome": "retrying"
+        "outcome": "failed"
       }
     },
     {
-      "op": "fail",
-      "claim": "c",
-      "reason": "boom",
-      "retryable": true,
-      "expect": {
-        "outcome": "retrying"
-      }
+      "backdate_events": "a",
+      "seconds": 86400
     },
     {
-      "expect_row": {
-        "activity": "a",
-        "retry_count": 1
+      "op": "cleanup",
+      "completed_s": 3600,
+      "failed_s": 172800,
+      "batch": 100,
+      "expect": {
+        "count": 0
       }
     },
     {
       "expect_events": {
         "activity": "a",
         "types": [
-          "Retrying"
+          "Failed"
         ]
       }
     }

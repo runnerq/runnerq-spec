@@ -1,9 +1,39 @@
 {
-  "description": "Columns the migrations remove after moving their data. An implementation that only validates (and does not migrate) must refuse a database that still has one: older SDK versions are using it.",
+  "description": "Objects the schema no longer has. Columns: the migrations remove them after moving their data; an implementation that only validates (and does not migrate) must refuse a database that still has one, since older SDK versions are using it. Indexes: dropped (DROP INDEX IF EXISTS) after the concurrent indexes are built; until then they only cost writes, so a validating implementation may tolerate them. Indexes a concurrent index replaces are retired too, and listed there.",
   "columns": [
     {
       "name": "runnerq_activities.payload",
       "doc": "Payloads moved to runnerq_inputs (0001_baseline)."
+    }
+  ],
+  "indexes": [
+    {
+      "name": "idx_runnerq_completed_non_cron",
+      "doc": "No query could use it: none filters on metadata source."
+    },
+    {
+      "name": "idx_runnerq_completed_cron",
+      "doc": "Nothing writes metadata source 'cron'."
+    },
+    {
+      "name": "idx_runnerq_dead_letter",
+      "doc": "Dead-lettered roots are found through idx_runnerq_root_terminal; listing reads idx_runnerq_query_status."
+    },
+    {
+      "name": "idx_runnerq_root_only",
+      "doc": "Roots lists filter by depth across queues; nothing used it."
+    },
+    {
+      "name": "idx_runnerq_root_status",
+      "doc": "Retention reads idx_runnerq_root_terminal."
+    },
+    {
+      "name": "idx_runnerq_query_type_created",
+      "doc": "Type filters read idx_runnerq_query_created; one more entry on every status change wasn't worth it."
+    },
+    {
+      "name": "idx_runnerq_dependencies_producer",
+      "doc": "A producer is always the result's own activity, so deleting a tree reads idx_runnerq_dependencies_result."
     }
   ]
 }

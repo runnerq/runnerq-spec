@@ -2,6 +2,27 @@
 
 ## 0.7.0
 
+Leaner storage: about half the writes and storage per activity, measured on
+Postgres 17 (5,000 activities: WAL for submit, claim and complete 5.3 KB →
+2.5 KB, a lease renewal 856 B → 173 B, on disk 2.6 KB → 1.3 KB). Breaking,
+before any release; `0001_baseline` is edited this once.
+
+- Events store only what the activity row can't say. `Enqueued`,
+  `Scheduled`, `Dequeued`, `Completed`, `ResultStored` and `LeaseExtended`
+  are gone (the row's times and `runnerq_results` say them); an event ending
+  an attempt records the attempt's `started_at`. The storage protocol drops
+  `ExtendLease`.
+- `RetentionPolicy.Events` (`events_s` in conformance): events of finished
+  activities can be trimmed sooner than their tree.
+- Indexes: `runnerq_activities` goes from 15 to 9. Seven retired
+  (`retired.json` now lists indexes too, dropped after the concurrent
+  builds); `idx_runnerq_processing` leaves the lease out so renewals are HOT
+  (with `fillfactor = 85`); `idx_runnerq_root_children` leaves roots out;
+  `idx_runnerq_root_terminal` covers cancelled roots, which retention needs;
+  `idx_runnerq_query_status` leaves completed activities out;
+  `idx_runnerq_results_by_owner` serves step lists without the queue.
+- `schema/postgres/README.md`: column contracts every implementation keeps.
+
 - 13 more scenarios: the other idempotency policies, shared and reaped
   results waking waiters, park and signal edge cases, the reaper's limit,
   retention with live work and separate ages, and Go and TypeScript

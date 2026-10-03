@@ -50,7 +50,7 @@ fresh queue; ids are UUIDs the runner chooses.
 | `signal` | `target`, `name`, `payload` | `{}` |
 | `lookup_key` | `key` (an encoded business key) | `{"id": id}` |
 | `reap` | `limit` | `{"count": n}` |
-| `cleanup` | `completed_s`, `failed_s`, `batch` | `{"count": n}` |
+| `cleanup` | `completed_s`, `failed_s`, `events_s` (0 off), `batch` | `{"count": n}`, the roots deleted |
 | `get_result` | `id` | `{"result": null \| {"state", "data", "serialization"}}` |
 
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
@@ -84,6 +84,7 @@ A step is one of:
   - `{"expire_lease": name}` puts the lease 10 seconds in the past.
   - `{"make_due": name}` sets `scheduled_at` to now.
   - `{"backdate": name, "column": "completed_at", "seconds": n}`.
+  - `{"backdate_events": name, "seconds": n}` ages the activity's events.
   - `{"sleep_ms": n}`.
 - **A bulk step** the runner performs through drivers:
   - `{"submit_many": {"prefix", "n", "type", "by"}}` submits `n` activities
@@ -98,7 +99,8 @@ A step is one of:
   - `expect_absent`: the activity and everything it owns are gone.
 
 After the last step the runner also checks every event the scenario wrote
-against `schema/postgres/events.schema.json`.
+against `schema/postgres/events.schema.json`, and that an event ending an
+attempt names its worker.
 
 Expected values are JSON, or matchers: `{"$id": name}`, `{"$token": claim}`,
 `{"$null": true}`, `{"$notnull": true}`, `{"$future": true}`,

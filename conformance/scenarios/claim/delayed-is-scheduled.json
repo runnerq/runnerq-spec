@@ -19,9 +19,7 @@
     {
       "expect_events": {
         "activity": "a",
-        "types": [
-          "Scheduled"
-        ]
+        "types": []
       }
     },
     {

@@ -18,20 +18,43 @@
     {
       "name": "idx_runnerq_query_created",
       "table": "runnerq_activities",
-      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
+      "doc": "QueryStorage: cross-queue, newest first; with a filter no other index serves (completed activities, a type), Postgres walks it and filters. The id tiebreaker matches the keyset cursor.",
       "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_created\nON runnerq_activities (created_at DESC, id DESC)"
     },
     {
-      "name": "idx_runnerq_query_status_created",
+      "name": "idx_runnerq_query_status",
       "table": "runnerq_activities",
-      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
-      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_status_created\nON runnerq_activities (status, created_at DESC, id DESC)"
+      "replaces": "idx_runnerq_query_status_created",
+      "doc": "QueryStorage by status, newest first, for every status but completed: live work and failures, the lists and counts the console polls. Completed, the bulk of the table, is left out so a completion writes no entry; its lists read idx_runnerq_query_created. Queries must name the statuses as literals so Postgres can prove the predicate.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_status\nON runnerq_activities (status, created_at DESC, id DESC)\nWHERE status <> 'completed'"
     },
     {
-      "name": "idx_runnerq_query_type_created",
+      "name": "idx_runnerq_processing",
       "table": "runnerq_activities",
-      "doc": "QueryStorage: cross-queue, newest first, optionally by status or type; the id tiebreaker matches the keyset cursor.",
-      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_type_created\nON runnerq_activities (activity_type, created_at DESC, id DESC)"
+      "replaces": "idx_runnerq_activities_processing",
+      "doc": "The reaper's scan of a queue's in-flight activities, which fleet concurrency bounds; it checks the lease on the row. Leaving lease_deadline_ms out of the key lets lease renewals update in place (HOT).",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_processing\nON runnerq_activities (queue_name)\nWHERE status = 'processing'"
+    },
+    {
+      "name": "idx_runnerq_root_children",
+      "table": "runnerq_activities",
+      "replaces": "idx_runnerq_root_id",
+      "doc": "A workflow's descendants. Roots are found by id, so they aren't indexed here: a tree is id = root OR (root_activity_id = root AND parent_activity_id IS NOT NULL).",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_root_children\nON runnerq_activities (root_activity_id)\nWHERE parent_activity_id IS NOT NULL"
+    },
+    {
+      "name": "idx_runnerq_root_terminal",
+      "table": "runnerq_activities",
+      "replaces": "idx_runnerq_root_terminal_age",
+      "doc": "Retention: a queue's finished roots by status, oldest first, so finding the oldest expired root is one short seek per terminal status. Each root gets one entry, when it finishes.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_root_terminal\nON runnerq_activities (queue_name, status, completed_at)\nWHERE parent_activity_id IS NULL\n  AND status IN ('completed', 'failed', 'dead_letter', 'cancelled')"
+    },
+    {
+      "name": "idx_runnerq_results_by_owner",
+      "table": "runnerq_results",
+      "replaces": "idx_runnerq_results_owner",
+      "doc": "An activity's checkpoints and signal results: its step history, and what deleting its tree removes.",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_results_by_owner\nON runnerq_results (owner_activity_id)\nWHERE owner_activity_id IS NOT NULL"
     }
   ]
 }

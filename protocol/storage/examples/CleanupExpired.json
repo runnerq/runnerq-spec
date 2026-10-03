@@ -1,5 +1,5 @@
 {
   "operation": "CleanupExpired",
-  "args": {"policy":{"Completed":30000000000,"Failed":30000000000},"batchSize":50},
+  "args": {"policy":{"Completed":30000000000,"Failed":30000000000,"Events":0},"batchSize":50},
   "result": 7
 }

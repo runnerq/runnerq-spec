@@ -104,7 +104,8 @@ func (r *runner) run(ctx context.Context, sc *scenario) error {
 // events' schema (schema/postgres/events.schema.json): one shape per event
 // type, whichever implementation wrote it.
 func (r *runner) checkEvents(ctx context.Context) error {
-	rows, err := r.db.Query(ctx, `SELECT event_type, COALESCE(detail, 'null'::jsonb)::text FROM runnerq_events WHERE queue_name = $1 ORDER BY id`, r.queue)
+	rows, err := r.db.Query(ctx, `SELECT event_type, COALESCE(detail, 'null'::jsonb)::text, worker_id IS NOT NULL
+		FROM runnerq_events WHERE queue_name = $1 ORDER BY id`, r.queue)
 	if err != nil {
 		return err
 	}
@@ -112,13 +113,16 @@ func (r *runner) checkEvents(ctx context.Context) error {
 	var bad []string
 	for rows.Next() {
 		var typ, detail string
-		if err := rows.Scan(&typ, &detail); err != nil {
+		var hasWorker bool
+		if err := rows.Scan(&typ, &detail, &hasWorker); err != nil {
 			return err
 		}
 		if _, ok := r.events.Doc["$defs"].(map[string]any)[typ]; !ok {
 			bad = append(bad, fmt.Sprintf("%s: not a known event type", typ))
 		} else if err := r.events.CheckJSON(typ, []byte(detail)); err != nil {
 			bad = append(bad, fmt.Sprintf("%s %s: %v", typ, detail, err))
+		} else if strings.Contains(detail, `"started_at"`) && !hasWorker {
+			bad = append(bad, fmt.Sprintf("%s %s: an attempt's end without its worker_id", typ, detail))
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -148,6 +152,10 @@ func (r *runner) step(ctx context.Context, step map[string]json.RawMessage) erro
 		secs, _ := strconv.ParseFloat(string(step["seconds"]), 64)
 		return r.exec(ctx, `UPDATE runnerq_activities SET `+col+` = `+col+` - make_interval(secs => $3)
 			WHERE id = $1 AND queue_name = $2`, r.ref(str(step["backdate"])), r.queue, secs)
+	case step["backdate_events"] != nil:
+		secs, _ := strconv.ParseFloat(string(step["seconds"]), 64)
+		return r.exec(ctx, `UPDATE runnerq_events SET created_at = created_at - make_interval(secs => $3)
+			WHERE activity_id = $1 AND queue_name = $2`, r.ref(str(step["backdate_events"])), r.queue, secs)
 	case step["sleep_ms"] != nil:
 		ms, _ := strconv.Atoi(string(step["sleep_ms"]))
 		time.Sleep(time.Duration(ms) * time.Millisecond)

@@ -2,86 +2,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/runnerq/runnerq-spec/schema/postgres/events.schema.json",
   "title": "RunnerQ stored events",
-  "description": "runnerq_events.detail for each event_type: what every implementation writes, so an event reads the same whichever SDK wrote it. Fields listed nowhere are not written.",
+  "description": "runnerq_events.detail for each event_type: what every implementation writes, so an event reads the same whichever SDK wrote it. Fields listed nowhere are not written. Only what the activity row can't say is stored: an attempt's end other than success, waits, signals, a child reused by another parent, and operator commands. Submission, claim, success and stored results are the row's created_at, started_at, completed_at and runnerq_results; executors may announce them live, but never store them.",
   "$defs": {
-    "Enqueued": {
-      "description": "The activity was submitted, runnable now.",
-      "type": "object",
-      "properties": {
-        "activity_type": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 4
-        }
-      },
-      "required": [
-        "activity_type",
-        "priority"
-      ],
-      "additionalProperties": false
-    },
-    "Scheduled": {
-      "description": "The activity was submitted to run later.",
-      "type": "object",
-      "properties": {
-        "activity_type": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 4
-        },
-        "scheduled_at": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "activity_type",
-        "priority",
-        "scheduled_at"
-      ],
-      "additionalProperties": false
-    },
-    "Dequeued": {
-      "description": "An attempt claimed the activity; worker_id is the claim.",
-      "type": "object",
-      "properties": {
-        "activity_type": {
-          "type": "string"
-        },
-        "lease_deadline_ms": {
-          "type": "integer",
-          "description": "The lease's end, epoch milliseconds."
-        }
-      },
-      "required": [
-        "activity_type",
-        "lease_deadline_ms"
-      ],
-      "additionalProperties": false
-    },
-    "Completed": {
-      "description": "The attempt succeeded and its result is stored.",
-      "type": "object",
-      "properties": {
-        "result_stored": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "result_stored"
-      ],
-      "additionalProperties": false
-    },
     "Retrying": {
       "description": "The attempt failed retryably; another is scheduled.",
       "type": "object",
       "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the attempt that ended started (the row's started_at at the time); worker_id is its claim."
+        },
         "error": {
           "type": "string"
         },
@@ -100,6 +31,7 @@
         }
       },
       "required": [
+        "started_at",
         "error",
         "retry_count",
         "scheduled_at"
@@ -110,6 +42,11 @@
       "description": "The attempt failed non-retryably; the activity failed.",
       "type": "object",
       "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the attempt that ended started (the row's started_at at the time); worker_id is its claim."
+        },
         "error": {
           "type": "string"
         },
@@ -118,6 +55,7 @@
         }
       },
       "required": [
+        "started_at",
         "error"
       ],
       "additionalProperties": false
@@ -126,6 +64,11 @@
       "description": "The activity was dead-lettered.",
       "type": "object",
       "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the attempt that ended started (the row's started_at at the time); worker_id is its claim."
+        },
         "error": {
           "type": "string"
         },
@@ -142,6 +85,7 @@
         }
       },
       "required": [
+        "started_at",
         "error",
         "reason"
       ],
@@ -151,6 +95,11 @@
       "description": "The reaper found the attempt's lease expired and made the activity runnable again.",
       "type": "object",
       "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the attempt that ended started (the row's started_at at the time); worker_id is its claim."
+        },
         "reason": {
           "type": "string",
           "enum": [
@@ -166,6 +115,7 @@
         }
       },
       "required": [
+        "started_at",
         "reason",
         "error",
         "retry_count"
@@ -246,36 +196,6 @@
         "name",
         "signal_id",
         "woke"
-      ],
-      "additionalProperties": false
-    },
-    "LeaseExtended": {
-      "description": "The attempt's lease was extended.",
-      "type": "object",
-      "properties": {
-        "lease_deadline_ms": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "lease_deadline_ms"
-      ],
-      "additionalProperties": false
-    },
-    "ResultStored": {
-      "description": "A checkpoint's or signal's result was stored for the activity.",
-      "type": "object",
-      "properties": {
-        "state": {
-          "type": "string",
-          "enum": [
-            "Ok",
-            "Err"
-          ]
-        }
-      },
-      "required": [
-        "state"
       ],
       "additionalProperties": false
     },

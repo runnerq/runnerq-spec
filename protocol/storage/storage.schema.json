@@ -313,11 +313,17 @@
         "Failed": {
           "$ref": "#/$defs/Duration",
           "minimum": 0
+        },
+        "Events": {
+          "$ref": "#/$defs/Duration",
+          "minimum": 0,
+          "description": "How long events of finished activities are kept, apart from their tree; 0 keeps them as long as the tree. Events of unfinished activities are kept."
         }
       },
       "required": [
         "Completed",
-        "Failed"
+        "Failed",
+        "Events"
       ],
       "additionalProperties": false
     },
@@ -858,24 +864,6 @@
         "workerID",
         "kind",
         "step"
-      ],
-      "additionalProperties": false
-    },
-    "ExtendLeaseArgs": {
-      "type": "object",
-      "properties": {
-        "activityID": {
-          "$ref": "#/$defs/UUID"
-        },
-        "extendBy": {
-          "$ref": "#/$defs/Duration",
-          "minimum": 0,
-          "maximum": 86400000000000
-        }
-      },
-      "required": [
-        "activityID",
-        "extendBy"
       ],
       "additionalProperties": false
     },
@@ -1497,14 +1485,6 @@
       "args": "#/$defs/YieldArgs",
       "result": {
         "type": "null"
-      }
-    },
-    {
-      "name": "ExtendLease",
-      "x-go-interface": "QueueStorage",
-      "args": "#/$defs/ExtendLeaseArgs",
-      "result": {
-        "type": "boolean"
       }
     },
     {
