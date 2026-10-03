@@ -369,7 +369,8 @@
         },
         "notices": {
           "type": "boolean",
-          "description": "Send activity.notices. The gateway turns it on while someone is watching the app and off when no one is; absent is off."
+          "description": "Send activity.notices. The gateway turns it on while someone is watching the app and off when no one is. Absent in a welcome is off; absent in a config.update is unchanged.",
+          "x-go-pointer": true
         }
       },
       "required": [],
