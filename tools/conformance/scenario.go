@@ -45,15 +45,34 @@ func loadScenario(path string) (*scenario, error) {
 }
 
 // drivers are the named drivers the scenario's steps ask for ("by").
+// drivers lists the drivers the scenario names: an operation's "by", and the
+// drivers of its bulk steps.
 func (sc *scenario) drivers() []string {
 	var out []string
+	add := func(names ...string) {
+		for _, n := range names {
+			if n != "" && !slices.Contains(out, n) {
+				out = append(out, n)
+			}
+		}
+	}
 	for _, raw := range sc.Steps {
 		var s struct {
-			By string `json:"by"`
+			By         string `json:"by"`
+			SubmitMany *struct {
+				By string `json:"by"`
+			} `json:"submit_many"`
+			Drain *struct {
+				By []string `json:"by"`
+			} `json:"drain"`
 		}
 		_ = json.Unmarshal(raw, &s)
-		if s.By != "" && !slices.Contains(out, s.By) {
-			out = append(out, s.By)
+		add(s.By)
+		if s.SubmitMany != nil {
+			add(s.SubmitMany.By)
+		}
+		if s.Drain != nil {
+			add(s.Drain.By...)
 		}
 	}
 	return out

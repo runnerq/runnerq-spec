@@ -82,5 +82,9 @@ What the schema can't enforce, every implementation keeps:
 - `runnerq_dependencies.producer_activity_id` is null (a checkpoint or signal
   result) or equal to `result_id` (an activity's own result, which pins the
   producer's tree).
-- `runnerq_activities.started_at` is when the current or last attempt was
-  claimed; an event ending an attempt records it (`events.schema.json`).
+- `runnerq_idempotency`: a key's activity carries that key in
+  `runnerq_activities.idempotency_key`, so a tree's keys are found by primary
+  key.
+- `runnerq_activities.started_at` is when the current attempt was claimed. A
+  retry or requeue clears it, so an event ending an attempt records it
+  (`events.schema.json`), with the attempt's claim as `worker_id`.
