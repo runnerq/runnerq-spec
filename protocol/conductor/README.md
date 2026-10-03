@@ -145,7 +145,8 @@ answers `hello` with a welcome, or with an error and a 1008 close.
   message's schema version (`v`) and any sub-features the agent supports. The
   gateway only sends what is advertised, and only with advertised
   sub-features. The Cloud UI greys out anything no connected executor
-  supports.
+  supports. An agent also advertises the events it can send when the gateway
+  asks for them (`activity.notices`).
 - **Message versions** (`v` inside a capability) let one message evolve
   incompatibly (`activities.list` v2) while the rest of the protocol stays at
   protocol `v1`. Requests carry the chosen message version in `meta.mv` when
@@ -252,7 +253,8 @@ Events are stored only for what an activity can't show itself
 success, waits, signals, links and commands. `activity.created`,
 `activity.scheduled`, `attempt.started` and `attempt.succeeded` are an
 activity's `created_at`, `scheduled_for`, `started_at` and `completed_at`, and
-are never in `events.list` or a stream.
+are never in `events.list` or a stream: they are announced as notices
+(section 9).
 
 Event types:
 
@@ -489,6 +491,7 @@ the same way.
 | `executor.report` | subset of `executor.describe` | Periodic live metrics. |
 | `stream.events` | `{"subscription_id","items":[Event],"cursor"}` | Batched events for a subscription. |
 | `stream.gap` | `{"subscription_id","since_cursor"}` | Events may have been lost; the Cloud re-queries from `since_cursor` with `events.list`. |
+| `activity.notices` | `{"items":[Notice],"dropped"?}` | Lifecycle changes this executor made, while `config.notices` is on. |
 
 **Gateway → agent:**
 
@@ -515,6 +518,32 @@ the same way.
 - The gateway keeps one subscription per app, whatever the number of
   viewers, and fans out to browsers itself; it re-subscribes elsewhere from
   the last cursor when the serving executor goes away.
+
+### Notices
+
+Stored events cover only what an activity can't show itself, so the four
+changes every activity goes through (`activity.created`, `activity.scheduled`,
+`attempt.started`, `attempt.succeeded`) are announced live instead, by the
+executor that made them:
+
+```json
+{"activity_id":"…","type":"attempt.started","at":"…","queue":"payments",
+ "activity_type":"charge_card","root_id":"…","attempt":1,"executor_id":"exec-7f3a"}
+```
+
+- An agent that can send them advertises the capability `activity.notices`
+  in `hello`. It sends them only while `config.notices` is on: the gateway
+  turns it on while someone is watching the app, and off again.
+- Every executor sends its own; the gateway gathers them from all of the
+  app's sessions. A submission is announced when an executor's process makes
+  it (a handler spawning a child, or code using the engine); a process with no
+  agent announces nothing.
+- Best effort, never stored and never resent: notices have no cursor, a gap
+  or reconnect loses the ones in between, and a consumer that needs the truth
+  reads the activity. Agents send a batch at most every 250 ms, keep at most a
+  few thousand waiting, and drop the oldest beyond that, reporting how many in
+  the next batch's `dropped`.
+- Metadata-only mode doesn't change them: they carry no payload or detail.
 
 ## 10. Metadata-only mode
 

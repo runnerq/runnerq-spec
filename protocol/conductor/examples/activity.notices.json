@@ -1,0 +1,27 @@
+{
+  "type": "activity.notices",
+  "data": {
+    "items": [
+      {
+        "activity_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "type": "activity.created",
+        "at": "2026-10-02T12:00:00.000Z",
+        "queue": "payments",
+        "activity_type": "charge_card",
+        "root_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "executor_id": "exec-7f3a"
+      },
+      {
+        "activity_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "type": "attempt.started",
+        "at": "2026-10-02T12:00:00.140Z",
+        "queue": "payments",
+        "activity_type": "charge_card",
+        "root_id": "0192f3a4-5b6c-7d8e-9f01-23456789abcd",
+        "attempt": 1,
+        "executor_id": "exec-7f3a"
+      }
+    ],
+    "dropped": 12
+  }
+}
