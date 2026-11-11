@@ -15,7 +15,7 @@ each tick once.
 | `activity_type` | The type each fire enqueues. |
 | `payload`, `serialization` | The fired activity's input, stored as in `runnerq_inputs`. |
 | `options` | The fired activity's execution options (below). |
-| `catch_up`, `catch_up_limit` | What to do with ticks that came due while no worker fired them. |
+| `catch_up`, `catch_up_limit` | What to do with ticks that came due while no worker fired them. The limit is 1 to 1000. |
 | `paused` | A paused schedule fires nothing. |
 | `next_fire_at` | The earliest tick not yet handled. Always a fire time of the cron. |
 | `last_fire_at` | The latest tick fired, or null. Triggers don't count. |
@@ -141,6 +141,7 @@ loop leaves it out for the rest of the batch and fires the others.
   start, changes nothing.
 - **Pause** sets `paused`. **Resume** clears it and sets `next_fire_at` to the
   first fire time after now: ticks missed while paused are not caught up.
+  Resuming a schedule that isn't paused changes nothing.
 - **Trigger** enqueues the activity now, as a fire at `NOW()` truncated to the
   second, whether or not the schedule is paused, and changes nothing on the
   row. Two triggers in the same second, or a trigger at a tick's second, make
