@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
+  Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
+  a newer language feature.
+
 ## 0.9.0
 
 - Schema: `runnerq_worker_pools` is gone (`0002_drop_worker_pools`). It held a

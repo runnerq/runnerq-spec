@@ -1,6 +1,6 @@
 module github.com/runnerq/runnerq-spec/tools/catalog
 
-go 1.27
+go 1.25
 
 require github.com/jackc/pgx/v5 v5.8.0
 
