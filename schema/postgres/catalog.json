@@ -420,50 +420,6 @@
       "primary_key": [
         "activity_id"
       ]
-    },
-    {
-      "name": "runnerq_worker_pools",
-      "columns": [
-        {
-          "name": "activity_types",
-          "type": "_text",
-          "nullable": true,
-          "default": null
-        },
-        {
-          "name": "last_seen_at",
-          "type": "timestamptz",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "max_workers",
-          "type": "int4",
-          "nullable": false,
-          "default": null
-        },
-        {
-          "name": "pool_id",
-          "type": "uuid",
-          "nullable": false,
-          "default": null
-        },
-        {
-          "name": "queue_name",
-          "type": "text",
-          "nullable": false,
-          "default": null
-        },
-        {
-          "name": "started_at",
-          "type": "timestamptz",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "primary_key": [
-        "pool_id"
-      ]
     }
   ],
   "indexes": [
@@ -531,11 +487,6 @@
       "name": "idx_runnerq_root_terminal",
       "table": "runnerq_activities",
       "definition": "CREATE INDEX idx_runnerq_root_terminal ON runnerq_activities USING btree (queue_name, status, completed_at) WHERE ((parent_activity_id IS NULL) AND (status = ANY (ARRAY['completed'::text, 'failed'::text, 'dead_letter'::text, 'cancelled'::text])))"
-    },
-    {
-      "name": "idx_runnerq_worker_pools_queue_alive",
-      "table": "runnerq_worker_pools",
-      "definition": "CREATE INDEX idx_runnerq_worker_pools_queue_alive ON runnerq_worker_pools USING btree (queue_name, last_seen_at)"
     }
   ],
   "retired": {
