@@ -1,0 +1,27 @@
+{
+  "description": "The spans an SDK's tracer starts and the trace context it stores, so one trace runs from an enqueue to the last step of the activity tree whichever SDK did each part. The core of an SDK depends on no tracing library: it calls a tracer interface, and an optional integration (runnerq-go/otel, runnerq/otel) implements it with OpenTelemetry.",
+  "metadata_key": {
+    "name": "traceparent",
+    "doc": "The activity metadata key holding a W3C trace context traceparent (https://www.w3.org/TR/trace-context/), written at enqueue under the rule of vectors/traceparent.json. An attempt continues it: the attempt span's parent is the span it names."
+  },
+  "spans": [
+    { "id": "enqueue", "name": "runnerq.enqueue", "kind": "producer", "attributes": ["queue", "activity_type", "activity_id", "parent_id", "root_id"], "outcomes": ["enqueued", "existing"], "doc": "One enqueue, ended once the insert commits (or failed). Its context is the traceparent stored with the activity. A child activity's enqueue is a child of the step or attempt that spawned it." },
+    { "id": "attempt", "name": "runnerq.attempt", "kind": "consumer", "attributes": ["queue", "activity_type", "activity_id", "parent_id", "root_id", "attempt"], "outcomes": ["completed", "retry", "failed", "timeout", "dead_letter", "yielded", "claim_lost", "error"], "doc": "One attempt, from claim until its outcome is recorded. Its parent is the activity's stored traceparent, so retries and the attempts that resume after a durable sleep or signal wait share the enqueue span as parent: one connected trace. With no stored traceparent it starts a new trace." },
+    { "id": "step", "name": "runnerq.step", "kind": "internal", "attributes": ["activity_id", "step_name"], "outcomes": ["ok", "error"], "doc": "One checkpointed step that runs its function, a child of the attempt. A replayed step (its stored result returned) starts no span." },
+    { "id": "sleep", "name": "runnerq.sleep", "kind": "internal", "attributes": ["activity_id", "step_name", "wake_at"], "outcomes": ["elapsed", "parked"], "doc": "A durable sleep reached by an attempt, a child of the attempt. It ends when the sleep returns (elapsed) or parks the activity (parked); the attempt that resumes after the wake reaches it again and ends it elapsed." },
+    { "id": "signal_wait", "name": "runnerq.signal.wait", "kind": "internal", "attributes": ["activity_id", "signal_name"], "outcomes": ["received", "parked", "timeout"], "doc": "A wait for a named signal, a child of the attempt; like sleep, a parked wait is reached again by the resuming attempt." },
+    { "id": "signal_send", "name": "runnerq.signal.send", "kind": "producer", "attributes": ["activity_id", "signal_name"], "outcomes": ["sent"], "doc": "Delivering a signal to an activity, in the sender's trace; activity_id is the target." }
+  ],
+  "attributes": [
+    { "id": "queue", "name": "runnerq.queue", "type": "string", "doc": "The queue." },
+    { "id": "activity_type", "name": "runnerq.activity.type", "type": "string", "doc": "The activity's persisted type name." },
+    { "id": "activity_id", "name": "runnerq.activity.id", "type": "string", "doc": "The activity's id; on an enqueue that found an existing activity under its idempotency key, the existing one's." },
+    { "id": "parent_id", "name": "runnerq.activity.parent_id", "type": "string", "doc": "The parent activity's id; absent for a root." },
+    { "id": "root_id", "name": "runnerq.activity.root_id", "type": "string", "doc": "The root activity's id." },
+    { "id": "attempt", "name": "runnerq.attempt", "type": "int", "doc": "The attempt number, from 1." },
+    { "id": "step_name", "name": "runnerq.step.name", "type": "string", "doc": "The step's name as the handler gave it." },
+    { "id": "signal_name", "name": "runnerq.signal.name", "type": "string", "doc": "The signal's name." },
+    { "id": "wake_at", "name": "runnerq.wake_at", "type": "string", "doc": "When a sleep wakes, RFC 3339 in UTC." },
+    { "id": "outcome", "name": "runnerq.outcome", "type": "string", "doc": "How the span ended: one of the span's outcomes. Set by the SDK when the span ends; a tracer also marks the span as an error when the SDK passes one." }
+  ]
+}
