@@ -1,0 +1,42 @@
+{
+  "description": "catch_up all with a limit fires only the latest catch_up_limit due ticks.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 0 1 1 *",
+      "type": "t",
+      "catch_up": "all",
+      "catch_up_limit": 2
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "catch_up": "all",
+        "catch_up_limit": 2
+      }
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "year",
+      "back": "5 years"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 2
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "trunc": "year",
+        "ago": [
+          "1 year",
+          "0 years"
+        ]
+      }
+    }
+  ]
+}

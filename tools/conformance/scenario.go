@@ -65,6 +65,9 @@ func (sc *scenario) drivers() []string {
 			Drain *struct {
 				By []string `json:"by"`
 			} `json:"drain"`
+			FireRace *struct {
+				By []string `json:"by"`
+			} `json:"fire_race"`
 		}
 		_ = json.Unmarshal(raw, &s)
 		add(s.By)
@@ -73,6 +76,9 @@ func (sc *scenario) drivers() []string {
 		}
 		if s.Drain != nil {
 			add(s.Drain.By...)
+		}
+		if s.FireRace != nil {
+			add(s.FireRace.By...)
 		}
 	}
 	return out
@@ -90,14 +96,20 @@ type runner struct {
 	first   *driver
 	dsn     string
 
-	queue  string
-	ids    map[string]string
-	claims map[string]claim
+	queue   string
+	ids     map[string]string
+	claims  map[string]claim
+	failing []string // tables fail_writes is failing
 }
 
 func (r *runner) run(ctx context.Context, sc *scenario) error {
 	r.queue = "cf_" + randomHex(8)
 	r.ids, r.claims = map[string]string{}, map[string]claim{}
+	defer func() {
+		for _, table := range r.failing {
+			_ = r.failWrites(context.Background(), table, false)
+		}
+	}()
 	for _, d := range r.drivers {
 		rep, err := d.call("open", map[string]any{"dsn": r.dsn, "queue": r.queue}, 2*time.Minute)
 		if err != nil {
@@ -183,6 +195,18 @@ func (r *runner) step(ctx context.Context, step map[string]json.RawMessage) erro
 		return r.drain(step["drain"])
 	case step["submit_many"] != nil:
 		return r.submitMany(step["submit_many"])
+	case step["fire_race"] != nil:
+		return r.fireRace(step["fire_race"])
+	case step["make_schedule_due"] != nil:
+		return r.exec(ctx, `UPDATE runnerq_schedules
+			SET next_fire_at = (date_trunc($3, NOW() AT TIME ZONE 'UTC') - $4::interval) AT TIME ZONE 'UTC'
+			WHERE queue_name = $1 AND name = $2`, r.queue, str(step["make_schedule_due"]), str(step["trunc"]), str(step["back"]))
+	case step["fail_writes"] != nil:
+		return r.failWrites(ctx, str(step["fail_writes"]), string(step["on"]) == "true")
+	case step["expect_schedule"] != nil:
+		return r.expectSchedule(ctx, step["expect_schedule"])
+	case step["expect_fires"] != nil:
+		return r.expectFires(ctx, step["expect_fires"])
 	case step["expect_row"] != nil:
 		return r.expectRow(ctx, step["expect_row"])
 	case step["expect_events"] != nil:
@@ -251,7 +275,7 @@ func (r *runner) operation(step map[string]json.RawMessage) error {
 		}
 	}
 	if want := str(expect["error"]); want != "" {
-		if rep.Error == nil || rep.Error.Kind != want {
+		if rep.Error == nil || (want != "any" && rep.Error.Kind != want) {
 			return fmt.Errorf("want error %s, got %s", want, describe(rep))
 		}
 		return nil
@@ -261,6 +285,11 @@ func (r *runner) operation(step map[string]json.RawMessage) error {
 	}
 	var got map[string]json.RawMessage
 	_ = json.Unmarshal(rep.OK, &got)
+	if op == "trigger_schedule" {
+		if name := str(step["as"]); name != "" {
+			r.ids[name] = str(got["id"])
+		}
+	}
 	if op == "claim" {
 		var claims []claim
 		_ = json.Unmarshal(got["claims"], &claims)
@@ -505,6 +534,23 @@ func (r *runner) match(what string, want, got json.RawMessage, now time.Time) er
 					return err
 				}
 				want, _ = json.Marshal(id)
+			case "$trunc":
+				var tr []string
+				if err := json.Unmarshal(v, &tr); err != nil || len(tr) != 2 {
+					return fmt.Errorf("$trunc: want [unit, interval]")
+				}
+				at, err := r.truncAgo(tr[0], tr[1])
+				if err != nil {
+					return err
+				}
+				t, err := timeOf(got)
+				if err != nil {
+					return fmt.Errorf("%s = %s: %w", what, got, err)
+				}
+				if !t.Equal(at) {
+					return fmt.Errorf("%s = %s, want %s", what, got, at.Format(time.RFC3339Nano))
+				}
+				return nil
 			case "$future", "$past":
 				t, err := timeOf(got)
 				if err != nil {

@@ -51,7 +51,10 @@ runnerq-spec/
 │   ├── canonical_event.json
 │   ├── internal_events.json
 │   ├── index_definition.json   catalog normalization
-│   └── column_default.json
+│   ├── column_default.json
+│   ├── cron_next_fire.json     cron fire times, across daylight saving
+│   └── schedule_fire.json      what firing a due schedule enqueues
+├── schedules.md                cron schedules: dialect, firing, catch-up
 ├── schema/
 │   └── postgres/               migrations, concurrent indexes, catalog
 │                               (see its README)

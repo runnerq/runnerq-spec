@@ -1,0 +1,48 @@
+{
+  "description": "If next_fire_at were not advanced after a tick fired (a crash between the two writes in an implementation that split them), firing the same tick again enqueues nothing: the idempotency key schedule:<name>:<fire time> already exists.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "count": 1
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        }
+      }
+    }
+  ]
+}

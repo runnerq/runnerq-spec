@@ -1,0 +1,77 @@
+{
+  "description": "A due tick enqueues one root activity with the schedule's payload and options, keyed schedule:<name>:<fire time>; next_fire_at moves past now and last_fire_at records the tick. Firing again enqueues nothing.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t",
+      "payload": {
+        "n": 1
+      },
+      "priority": 3,
+      "max_attempts": 5,
+      "timeout_s": 60,
+      "metadata": {
+        "k": "v"
+      }
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ],
+        "payload": {
+          "n": 1
+        },
+        "row": {
+          "status": "pending",
+          "priority": 3,
+          "max_retries": 5,
+          "timeout_seconds": 60,
+          "metadata": {
+            "k": "v"
+          },
+          "parent_activity_id": {
+            "$null": true
+          },
+          "depth": 0
+        }
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$trunc": [
+            "hour",
+            "0 hours"
+          ]
+        }
+      }
+    }
+  ]
+}

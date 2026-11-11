@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- Cron schedules ([schedules.md](schedules.md)). Schema: `runnerq_schedules`
+  (`0003_schedules`) with the due-scan index `idx_runnerq_schedules_due`.
+  The dialect is standard 5-field cron, with an optional leading seconds
+  field and the `@hourly`-style macros, in an IANA time zone; a fixed-hour
+  schedule fires once per day across daylight-saving changes, an any-hour one
+  follows real time. A due schedule is fired in one transaction that enqueues
+  each tick with the key `schedule:<name>:<fire time>` and advances
+  `next_fire_at`. `catch_up` is `skip`, `one` (default) or `all` up to
+  `catch_up_limit` (default 100).
+- Constants: `schedule_key_prefix`, `schedule_catch_up_grace_seconds` (60),
+  `schedule_catch_up_limit_default` (100).
+- Vectors: `cron_next_fire.json` (dialect, month ends, leap days, day-of-month
+  and day-of-week, New York, London, Sydney and Lord Howe daylight-saving
+  changes) and `schedule_fire.json` (catch-up), with a reference
+  implementation in `verify/cron_test.go`.
+- Conformance: 11 schedule scenarios (firing once, a lost advance, atomic
+  enqueue and advance, each catch-up mode, pause, resume, trigger, upsert)
+  and 2 mixed-fleet ones (Go and TypeScript racing a due schedule, and each
+  managing the other's schedules). Driver ops `upsert_schedule`,
+  `pause_schedule`, `resume_schedule`, `trigger_schedule`, `delete_schedule`,
+  `list_schedules` and `fire_schedules`; runner steps `make_schedule_due`,
+  `fail_writes`, `fire_race`, `expect_schedule` and `expect_fires`.
+
 ## 0.9.0
 
 - Schema: `runnerq_worker_pools` is gone (`0002_drop_worker_pools`). It held a
