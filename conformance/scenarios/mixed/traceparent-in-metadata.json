@@ -1,0 +1,61 @@
+{
+  "description": "Either SDK's storage keeps a traceparent in metadata as given: on a root submitted by one, and on a child the other spawns under the root's claim with the inherited value (observability/tracing.json, vectors/traceparent.json).",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "root",
+      "type": "t",
+      "by": "go",
+      "metadata": {
+        "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "expect": {
+        "claims": [
+          "root"
+        ]
+      },
+      "by": "ts"
+    },
+    {
+      "op": "submit",
+      "as": "child",
+      "type": "u",
+      "by": "ts",
+      "parent": "root",
+      "root": "root",
+      "depth": 1,
+      "fence": "c",
+      "metadata": {
+        "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "root",
+        "metadata": {
+          "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "child",
+        "metadata": {
+          "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+        },
+        "parent_activity_id": {
+          "$id": "root"
+        }
+      }
+    }
+  ]
+}
