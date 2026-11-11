@@ -1,0 +1,276 @@
+{
+  "description": "A cancel from one SDK revokes a claim the other holds, and a command id applied by one replays from the shared ledger in the other.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_",
+        "by": "go"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "m-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled"
+      ],
+      "by": "ts",
+      "expect": {
+        "applied": 5,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          }
+        }
+      }
+    },
+    {
+      "op": "renew",
+      "by": "go",
+      "claim": "s_running",
+      "lease_ms": 30000,
+      "expect": {
+        "renewed": false
+      }
+    },
+    {
+      "op": "complete",
+      "by": "go",
+      "claim": "s_running",
+      "value": 1,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "m-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled"
+      ],
+      "by": "go",
+      "expect": {
+        "applied": 5,
+        "replayed": true,
+        "items": {
+          "s_pending": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "m-1",
+      "fingerprint": "f2",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled"
+      ],
+      "by": "go",
+      "expect": {
+        "error": "conflict"
+      }
+    },
+    {
+      "op": "command",
+      "by": "go",
+      "kind": "retry",
+      "command_id": "m-2",
+      "fingerprint": "f1",
+      "ids": [
+        "s_running"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "applied": 1,
+        "items": {
+          "s_running": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "retry",
+      "command_id": "m-2",
+      "fingerprint": "f1",
+      "ids": [
+        "s_running"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "applied": 1,
+        "replayed": true,
+        "items": {
+          "s_running": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "claim",
+      "by": "ts",
+      "types": [
+        "s_running"
+      ],
+      "as": [
+        "again"
+      ],
+      "expect": {
+        "claims": [
+          "s_running"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "by": "ts",
+      "claim": "again",
+      "value": 2
+    }
+  ]
+}

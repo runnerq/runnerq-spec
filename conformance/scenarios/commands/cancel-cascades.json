@@ -1,0 +1,141 @@
+{
+  "description": "A cascading cancel also cancels every unfinished descendant, running ones included, and counts them; finished descendants are left as they are.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "submit",
+      "as": "done",
+      "type": "done",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "as": [
+        "ck"
+      ],
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "g",
+      "type": "grandchild",
+      "parent": "k",
+      "root": "p",
+      "depth": 2,
+      "fence": "ck"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "done"
+      ],
+      "as": [
+        "cd"
+      ],
+      "expect": {
+        "claims": [
+          "done"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "cd",
+      "value": 1
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "ids": [
+        "p"
+      ],
+      "cascade": true,
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "cascaded": 2,
+        "items": {
+          "p": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "cancelled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "k",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "g",
+        "status": "cancelled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "done",
+        "status": "completed"
+      }
+    },
+    {
+      "op": "renew",
+      "claim": "ck",
+      "lease_ms": 30000,
+      "expect": {
+        "renewed": false
+      }
+    }
+  ]
+}

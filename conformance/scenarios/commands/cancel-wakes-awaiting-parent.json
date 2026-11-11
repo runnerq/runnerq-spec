@@ -1,0 +1,93 @@
+{
+  "description": "Cancelling a child a parent is parked on stores the child's cancellation error and wakes the parent; without cascade the parent itself is left alone.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "as": [
+        "cp"
+      ],
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "register_dependency",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "waiting"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "ids": [
+        "k"
+      ],
+      "expect": {
+        "applied": 1,
+        "cascaded": 0,
+        "items": {
+          "k": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "k",
+        "status": "cancelled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_result": {
+        "id": "k",
+        "data_subset": {
+          "type": "cancelled"
+        }
+      }
+    }
+  ]
+}

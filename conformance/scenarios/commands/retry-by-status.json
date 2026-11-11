@@ -1,0 +1,290 @@
+{
+  "description": "Retry makes failed, dead-lettered and cancelled activities pending again (resetting attempts on request) and skips every other status; a dead letter's retry is a redrive.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "matched": 9,
+        "applied": 3,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_retrying": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "skipped",
+            "status": "waiting",
+            "error": "conflict"
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_dead_letter": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_cancelled": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_pending",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_scheduled",
+        "status": "scheduled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_retrying",
+        "status": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "processing"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "status": "waiting"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_completed",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_failed",
+        "status": "pending",
+        "retry_count": 0,
+        "completed_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_dead_letter",
+        "status": "pending",
+        "retry_count": 0,
+        "completed_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_cancelled",
+        "status": "pending",
+        "retry_count": 0,
+        "completed_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_result": {
+        "id": "s_cancelled",
+        "absent": true
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "s_dead_letter",
+        "types": [
+          "DeadLetter",
+          "Redriven"
+        ]
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "s_failed",
+        "types": [
+          "Failed",
+          "Retried"
+        ]
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "matched": 9,
+        "applied": 3,
+        "replayed": true,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_retrying": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "skipped",
+            "status": "waiting",
+            "error": "conflict"
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_dead_letter": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_cancelled": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "command_id": "cmd-1",
+      "fingerprint": "f2",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "error": "conflict"
+      }
+    }
+  ]
+}

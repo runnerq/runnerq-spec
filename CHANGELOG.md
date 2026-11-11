@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Conformance: the `command` driver operation (the storage command API) and
+  13 scenarios under `commands/`: each command (cancel, retry, run now,
+  reschedule, set priority, delete, signal) against an activity in every
+  status, a repeated command id replaying from the ledger and the same id
+  with other input conflicting, a dry run, a filter target, resetting
+  attempts, cascading cancels, a cancel waking an awaiting parent, a cancel
+  revoking a running activity's claim, and malformed commands. A mixed
+  scenario cancels a claim one SDK holds from the other and replays a command
+  id across them. The runner gains the `each_status` step, `ids` and
+  `at_in_s` arguments and an `items` expectation.
+
 ## 0.9.0
 
 - Schema: `runnerq_worker_pools` is gone (`0002_drop_worker_pools`). It held a

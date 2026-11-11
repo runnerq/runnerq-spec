@@ -52,9 +52,17 @@ fresh queue; ids are UUIDs the runner chooses.
 | `reap` | `limit` | `{"count": n}` |
 | `cleanup` | `completed_s`, `failed_s`, `events_s` (0 off), `batch` | `{"count": n}`, the roots deleted |
 | `get_result` | `id` | `{"result": null \| {"state", "data", "serialization"}}` |
+| `command` | `kind` (`cancel`, `retry`, `run_now`, `reschedule`, `set_priority`, `delete`, `signal`), `command_id`, `fingerprint`, a target (`ids`, or `filter` and `max`), `dry_run`, `reason`, `cascade`, `reset_attempts`, `at`, `priority`, `name`, `payload` (signal) | `{"matched", "applied", "cascaded", "more", "replayed", "items": [{"id", "outcome", "status", "error"}]}` |
 
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
-between requests. Values (`payload`, `value`, `data`) are plain JSON
+between requests. A `command` is the storage command API (`ApplyCommand` in
+Go, `applyCommand` in TypeScript) with the arguments as given: `command_id`
+absent or empty disables the ledger, `cascade` and `reset_attempts` default
+to false, and `filter` is a query filter (`{"field", "op", "value"}`, `and`,
+`or`, `not`). In its reply, an item's `outcome` is `applied`, `skipped` or
+`would_apply`; `status` is the canonical status after the command (absent once
+deleted); `error` is `not_found` or `conflict` for a skipped item, else absent.
+Values (`payload`, `value`, `data`) are plain JSON
 (`json-v1`). Absent args take these defaults: `priority` 2, `max_attempts` 3,
 `timeout_s` 30, `delay_s` 0, `limit` 1, `lease_ms` 30000. The retry delay base
 is 1 second. A signal's result id is `checkpoint_id(target, "signal", name)`.
@@ -76,10 +84,13 @@ A step is one of:
 
 - **An operation** (`op`, with its args inline). `as` names what it creates:
   the id for `submit`, the claims for `claim`. Arguments refer to names:
-  activity ids by name, claims by name. `by` picks the driver when there are
-  several (`go`, `ts`; default the first). `expect` checks the reply:
-  `{"error": kind}`, `{"claims": [names]}` (in order), or any reply field
-  (`outcome`, `count`, `renewed`, `existing`, `result`).
+  activity ids by name, claims by name; `ids` is a list of names. `wake_in_s`
+  and `at_in_s` become `wake_at` and `at`, that many seconds from now. `by`
+  picks the driver when there are several (`go`, `ts`; default the first).
+  `expect` checks the reply: `{"error": kind}`, `{"claims": [names]}` (in
+  order), `{"items": {name: {field: value}}}` (a command's items, one per
+  name and no others), or any other reply field (`outcome`, `count`,
+  `renewed`, `existing`, `result`, `applied`, `replayed`, ...).
 - **A fixture** the runner applies in SQL:
   - `{"expire_lease": name}` puts the lease 10 seconds in the past.
   - `{"make_due": name}` sets `scheduled_at` to now.
@@ -89,6 +100,11 @@ A step is one of:
 - **A bulk step** the runner performs through drivers:
   - `{"submit_many": {"prefix", "n", "type", "by"}}` submits `n` activities
     named `<prefix>0` to `<prefix>n-1`.
+  - `{"each_status": {"prefix", "by"}}` puts one activity in every stored
+    status: `<prefix>pending`, `scheduled` (delayed an hour), `retrying`,
+    `running` (claimed, as claim `<prefix>running`), `waiting` (parked on a
+    sleep for an hour), `completed`, `failed`, `dead_letter` and `cancelled`,
+    each of its own type, its name.
   - `{"drain": {"types", "by": [drivers], "limit", "prefix", "n"}}` claims
     from every listed driver at once until the queue is empty, and checks
     each of the `n` activities was claimed exactly once.
