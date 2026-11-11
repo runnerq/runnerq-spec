@@ -6,11 +6,13 @@ package verify
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -20,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 var update = flag.Bool("update", false, "rewrite vector outputs from the reference implementation")
@@ -448,4 +451,177 @@ func TestColumnDefault(t *testing.T) {
 		}
 		return s, nil
 	})
+}
+
+type fingerprintFilter struct {
+	And   []fingerprintFilter `json:"and"`
+	Or    []fingerprintFilter `json:"or"`
+	Not   *fingerprintFilter  `json:"not"`
+	Field string              `json:"field"`
+	Op    string              `json:"op"`
+	Value any                 `json:"value"`
+}
+
+func TestCommandFingerprint(t *testing.T) {
+	check(t, "vectors/command_fingerprint.json", func(in struct {
+		Kind          string             `json:"kind"`
+		IDs           []string           `json:"ids"`
+		Filter        *fingerprintFilter `json:"filter"`
+		Max           int                `json:"max"`
+		DryRun        bool               `json:"dry_run"`
+		Cascade       bool               `json:"cascade"`
+		ResetAttempts bool               `json:"reset_attempts"`
+		Reason        string             `json:"reason"`
+		Name          string             `json:"name"`
+		At            string             `json:"at"`
+		Priority      int                `json:"priority"`
+		Payload       any                `json:"payload"`
+	}) (any, error) {
+		m := map[string]any{"kind": in.Kind}
+		if len(in.IDs) > 0 {
+			ids := make([]any, len(in.IDs))
+			for i, id := range in.IDs {
+				ids[i] = strings.ToLower(id)
+			}
+			m["ids"] = ids
+		}
+		if in.Filter != nil {
+			m["filter"] = filterMap(*in.Filter)
+		}
+		if in.Max != 0 {
+			m["max"] = float64(in.Max)
+		}
+		for k, v := range map[string]bool{"dry_run": in.DryRun, "cascade": in.Cascade, "reset_attempts": in.ResetAttempts} {
+			if v {
+				m[k] = true
+			}
+		}
+		for k, v := range map[string]string{"reason": in.Reason, "name": in.Name} {
+			if v != "" {
+				m[k] = v
+			}
+		}
+		if in.At != "" {
+			at, err := time.Parse(time.RFC3339Nano, in.At)
+			if err != nil {
+				return nil, err
+			}
+			m["at"] = at.UTC().Truncate(time.Millisecond).Format("2006-01-02T15:04:05.000Z")
+		}
+		if in.Priority != 0 {
+			m["priority"] = float64(in.Priority)
+		}
+		if in.Payload != nil {
+			m["payload"] = in.Payload
+		}
+		var b strings.Builder
+		canonicalJSON(&b, m)
+		sum := sha256.Sum256([]byte(b.String()))
+		return map[string]string{"canonical": b.String(), "fingerprint": hex.EncodeToString(sum[:])}, nil
+	})
+}
+
+func filterMap(f fingerprintFilter) map[string]any {
+	m := map[string]any{}
+	for k, list := range map[string][]fingerprintFilter{"and": f.And, "or": f.Or} {
+		if len(list) > 0 {
+			out := make([]any, len(list))
+			for i, g := range list {
+				out[i] = filterMap(g)
+			}
+			m[k] = out
+		}
+	}
+	if f.Not != nil {
+		m["not"] = filterMap(*f.Not)
+	}
+	if f.Field != "" {
+		m["field"] = f.Field
+	}
+	if f.Op != "" {
+		m["op"] = f.Op
+	}
+	if f.Value != nil {
+		m["value"] = f.Value
+	}
+	return m
+}
+
+// canonicalJSON writes v (decoded JSON: map, slice, string, float64, bool,
+// nil) in the canonical form vectors/command_fingerprint.json describes.
+func canonicalJSON(b *strings.Builder, v any) {
+	switch x := v.(type) {
+	case nil:
+		b.WriteString("null")
+	case bool:
+		b.WriteString(strconv.FormatBool(x))
+	case float64:
+		b.WriteString(ecmaNumber(x))
+	case string:
+		b.WriteByte('"')
+		for _, r := range x {
+			switch {
+			case r == '"':
+				b.WriteString(`\"`)
+			case r == '\\':
+				b.WriteString(`\\`)
+			case r == '\b':
+				b.WriteString(`\b`)
+			case r == '\t':
+				b.WriteString(`\t`)
+			case r == '\n':
+				b.WriteString(`\n`)
+			case r == '\f':
+				b.WriteString(`\f`)
+			case r == '\r':
+				b.WriteString(`\r`)
+			case r < 0x20:
+				fmt.Fprintf(b, `\u%04x`, r)
+			default:
+				b.WriteRune(r)
+			}
+		}
+		b.WriteByte('"')
+	case []any:
+		b.WriteByte('[')
+		for i, e := range x {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			canonicalJSON(b, e)
+		}
+		b.WriteByte(']')
+	case map[string]any:
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys) // byte order of UTF-8 is code point order
+		b.WriteByte('{')
+		for i, k := range keys {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			canonicalJSON(b, k)
+			b.WriteByte(':')
+			canonicalJSON(b, x[k])
+		}
+		b.WriteByte('}')
+	default:
+		panic(fmt.Sprintf("canonicalJSON: %T", v))
+	}
+}
+
+// ecmaNumber is ECMAScript's Number::toString for finite numbers.
+func ecmaNumber(f float64) string {
+	if f == 0 {
+		return "0"
+	}
+	if a := math.Abs(f); a >= 1e21 || a < 1e-6 {
+		s := strconv.FormatFloat(f, 'e', -1, 64) // 1e+21, 1.5e-07
+		mant, exp, _ := strings.Cut(s, "e")
+		sign, digits := exp[:1], strings.TrimLeft(exp[1:], "0")
+		return mant + "e" + sign + digits
+	}
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }

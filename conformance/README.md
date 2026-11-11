@@ -57,8 +57,9 @@ fresh queue; ids are UUIDs the runner chooses.
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
 between requests. A `command` is the storage command API (`ApplyCommand` in
 Go, `applyCommand` in TypeScript) with the arguments as given: `command_id`
-absent or empty disables the ledger, `cascade` and `reset_attempts` default
-to false, and `filter` is a query filter (`{"field", "op", "value"}`, `and`,
+absent or empty disables the ledger, `fingerprint` absent means the driver
+computes it from the other arguments (`vectors/command_fingerprint.json`, as
+the SDK clients do), `cascade` and `reset_attempts` default to false, and `filter` is a query filter (`{"field", "op", "value"}`, `and`,
 `or`, `not`). In its reply, an item's `outcome` is `applied`, `skipped` or
 `would_apply`; `status` is the canonical status after the command (absent once
 deleted); `error` is `not_found` or `conflict` for a skipped item, else absent.

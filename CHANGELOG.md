@@ -12,6 +12,12 @@
   scenario cancels a claim one SDK holds from the other and replays a command
   id across them. The runner gains the `each_status` step, `ids` and
   `at_in_s` arguments and an `items` expectation.
+- `vectors/command_fingerprint.json`: the canonical fingerprint of a
+  management command (canonical JSON of its input, SHA-256), so a command id
+  repeated with the same input replays from the shared `runnerq_commands`
+  ledger whichever SDK sent it. Conformance drivers compute it when a
+  `command` gives no `fingerprint`; a mixed scenario repeats Go's commands
+  from TypeScript and back.
 
 ## 0.9.0
 
