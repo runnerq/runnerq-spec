@@ -1,0 +1,210 @@
+{
+  "description": "Retry with reset_attempts restores the whole attempt budget; without it the activity keeps the attempts it used, so a retryable failure dead-letters it again.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "reset",
+      "type": "reset",
+      "max_attempts": 2
+    },
+    {
+      "op": "claim",
+      "types": [
+        "reset"
+      ],
+      "as": [
+        "reset1"
+      ],
+      "expect": {
+        "claims": [
+          "reset"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "reset1",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "reset"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "reset"
+      ],
+      "as": [
+        "reset2"
+      ],
+      "expect": {
+        "claims": [
+          "reset"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "reset2",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "reset",
+        "status": "dead_letter",
+        "retry_count": 1
+      }
+    },
+    {
+      "op": "submit",
+      "as": "keep",
+      "type": "keep",
+      "max_attempts": 2
+    },
+    {
+      "op": "claim",
+      "types": [
+        "keep"
+      ],
+      "as": [
+        "keep1"
+      ],
+      "expect": {
+        "claims": [
+          "keep"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "keep1",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "keep"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "keep"
+      ],
+      "as": [
+        "keep2"
+      ],
+      "expect": {
+        "claims": [
+          "keep"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "keep2",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "keep",
+        "status": "dead_letter",
+        "retry_count": 1
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "ids": [
+        "reset"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "applied": 1
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "ids": [
+        "keep"
+      ],
+      "expect": {
+        "applied": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "reset",
+        "status": "pending",
+        "retry_count": 0
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "keep",
+        "status": "pending",
+        "retry_count": 1
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "reset"
+      ],
+      "as": [
+        "r3"
+      ],
+      "expect": {
+        "claims": [
+          "reset"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "r3",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "keep"
+      ],
+      "as": [
+        "k3"
+      ],
+      "expect": {
+        "claims": [
+          "keep"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "k3",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "dead_letter"
+      }
+    }
+  ]
+}

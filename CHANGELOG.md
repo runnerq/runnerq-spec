@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Conformance: the `command` driver operation (the storage command API) and
+  13 scenarios under `commands/`: each command (cancel, retry, run now,
+  reschedule, set priority, delete, signal) against an activity in every
+  status, a repeated command id replaying from the ledger and the same id
+  with other input conflicting, a dry run, a filter target, resetting
+  attempts, cascading cancels, a cancel waking an awaiting parent, a cancel
+  revoking a running activity's claim, and malformed commands. A mixed
+  scenario cancels a claim one SDK holds from the other and replays a command
+  id across them. The runner gains the `each_status` step, `ids` and
+  `at_in_s` arguments and an `items` expectation.
+- `vectors/command_fingerprint.json`: the canonical fingerprint of a
+  management command (canonical JSON of its input, SHA-256), so a command id
+  repeated with the same input replays from the shared `runnerq_commands`
+  ledger whichever SDK sent it. Conformance drivers compute it when a
+  `command` gives no `fingerprint`; a mixed scenario repeats Go's commands
+  from TypeScript and back.
 - Observability: `observability/metrics.json` names every metric both SDKs
   emit (kind, unit, labels `queue`, `activity_type`, `status`), including new
   gauges `queue_depth`, `queue_oldest_pending_age` and `activities_in_flight`

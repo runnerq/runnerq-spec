@@ -1,0 +1,164 @@
+{
+  "description": "Drivers compute command fingerprints by vectors/command_fingerprint.json: a command id one SDK applied replays when the other repeats it with the same input (reschedule times compared to the millisecond), and conflicts with other input.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "by": "go"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "by": "go",
+      "delay_s": 3600
+    },
+    {
+      "op": "command",
+      "by": "go",
+      "kind": "cancel",
+      "command_id": "fp-1",
+      "ids": [
+        "a",
+        "b"
+      ],
+      "cascade": true,
+      "reason": "customer asked",
+      "expect": {
+        "applied": 2,
+        "replayed": false
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "cancel",
+      "command_id": "fp-1",
+      "ids": [
+        "a",
+        "b"
+      ],
+      "cascade": true,
+      "reason": "customer asked",
+      "expect": {
+        "applied": 2,
+        "replayed": true,
+        "items": {
+          "a": {
+            "outcome": "applied",
+            "status": "cancelled"
+          },
+          "b": {
+            "outcome": "applied",
+            "status": "cancelled"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "cancel",
+      "command_id": "fp-1",
+      "ids": [
+        "a",
+        "b"
+      ],
+      "cascade": true,
+      "reason": "other reason",
+      "expect": {
+        "error": "conflict"
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "retry",
+      "command_id": "fp-3",
+      "ids": [
+        "b"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "applied": 1,
+        "replayed": false
+      }
+    },
+    {
+      "op": "command",
+      "by": "go",
+      "kind": "retry",
+      "command_id": "fp-3",
+      "ids": [
+        "b"
+      ],
+      "reset_attempts": true,
+      "expect": {
+        "applied": 1,
+        "replayed": true
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "reschedule",
+      "command_id": "fp-4",
+      "ids": [
+        "b"
+      ],
+      "at": "2030-01-01T00:00:00.123456Z",
+      "expect": {
+        "applied": 0,
+        "replayed": false
+      }
+    },
+    {
+      "op": "command",
+      "by": "go",
+      "kind": "reschedule",
+      "command_id": "fp-4",
+      "ids": [
+        "b"
+      ],
+      "at": "2030-01-01T00:00:00.123Z",
+      "expect": {
+        "replayed": true
+      }
+    },
+    {
+      "op": "command",
+      "by": "go",
+      "kind": "set_priority",
+      "command_id": "fp-5",
+      "filter": {
+        "field": "type",
+        "op": "eq",
+        "value": "t"
+      },
+      "max": 10,
+      "priority": 4,
+      "expect": {
+        "applied": 1,
+        "replayed": false
+      }
+    },
+    {
+      "op": "command",
+      "by": "ts",
+      "kind": "set_priority",
+      "command_id": "fp-5",
+      "filter": {
+        "field": "type",
+        "op": "eq",
+        "value": "t"
+      },
+      "max": 10,
+      "priority": 4,
+      "expect": {
+        "applied": 1,
+        "replayed": true
+      }
+    }
+  ]
+}

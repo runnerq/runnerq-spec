@@ -1,0 +1,126 @@
+{
+  "description": "Cancelling a running activity releases its claim at once: the holder's renewal reports the claim gone, its acknowledgements are fenced out, and awaiters read a cancellation error.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c"
+      ],
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "stop-a",
+      "fingerprint": "f",
+      "ids": [
+        "a"
+      ],
+      "reason": "user asked",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "items": {
+          "a": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "last_worker_id": {
+          "$token": "c"
+        },
+        "lease_deadline_ms": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        },
+        "last_error": "activity cancelled: user asked"
+      }
+    },
+    {
+      "op": "renew",
+      "claim": "c",
+      "lease_ms": 30000,
+      "expect": {
+        "renewed": false
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c",
+      "value": 1,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c",
+      "reason": "late",
+      "retryable": true,
+      "expect": {
+        "error": "claim_lost"
+      }
+    },
+    {
+      "op": "get_result",
+      "id": "a",
+      "expect": {
+        "result": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_result": {
+        "id": "a",
+        "data_subset": {
+          "type": "cancelled",
+          "error": "activity cancelled: user asked"
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Cancelled"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}
