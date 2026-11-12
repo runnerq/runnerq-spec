@@ -51,7 +51,7 @@ func main() {
 	out := flag.String("out", "", "output file")
 	part := flag.String("part", "constants", "constants, schema, observability, storage, conductor or executor-report")
 	specImport := flag.String("spec-import", "./decode.js", "TypeScript module exporting Spec (-lang ts-specs)")
-	storageImport := flag.String("storage-import", "github.com/alob-mtc/runnerq-go/storage", "Go import path of runnerq-go's storage package")
+	storageImport := flag.String("storage-import", "github.com/runnerq/runnerq-go/storage", "Go import path of runnerq-go's storage package")
 	flag.Parse()
 	if *out == "" {
 		fail(fmt.Errorf("-out is required"))
