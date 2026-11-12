@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+- Schema: `runnerq_worker_pools` is gone (`0002_drop_worker_pools`). It held a
+  row per engine for a capacity report nothing reads any more.
+- Schema comments no longer name RunnerQ Cloud or the console.
+
 ## 0.8.0
 
 - Conductor protocol: `activity.notices`, an agent event announcing the

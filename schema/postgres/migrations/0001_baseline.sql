@@ -129,10 +129,10 @@ ALTER TABLE runnerq_results
 
 -- step is the human identity of a checkpoint row, "kind:name" (e.g.
 -- "run:create-transfer", "sleep:retry-backoff") — the same string the checkpoint
--- ID is derived from, persisted so the console can show a workflow's durable
--- step history (the checkpoint ID itself is a one-way hash). NULL for an
--- activity's own final result and for legacy rows. No dedicated index: read only
--- by owner (idx_runnerq_results_by_owner) on the console path, never on a hot path.
+-- ID is derived from, persisted so a workflow's durable step history can be
+-- listed (the checkpoint ID itself is a one-way hash). NULL for an activity's
+-- own final result and for legacy rows. No dedicated index: read only by owner
+-- (idx_runnerq_results_by_owner) when listing steps, never on a hot path.
 ALTER TABLE runnerq_results
     ADD COLUMN IF NOT EXISTS step TEXT;
 
@@ -140,21 +140,8 @@ ALTER TABLE runnerq_results
 ALTER TABLE runnerq_results
     ADD COLUMN IF NOT EXISTS serialization TEXT NOT NULL DEFAULT 'json-v1';
 
--- Worker pools: one row per live engine instance. Heartbeats let us tell
--- which pools are still alive for cluster-wide capacity reporting.
-CREATE TABLE IF NOT EXISTS runnerq_worker_pools (
-    pool_id        UUID PRIMARY KEY,
-    queue_name     TEXT NOT NULL,
-    max_workers    INTEGER NOT NULL,
-    activity_types TEXT[],
-    started_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_runnerq_worker_pools_queue_alive
-    ON runnerq_worker_pools(queue_name, last_seen_at);
-
--- Command ledger: applied RunnerQ Cloud commands and their results, so a
--- repeated command_id replays its result instead of applying twice. Rows are
+-- Command ledger: applied commands and their results, so a repeated
+-- command_id replays its result instead of applying twice. Rows are
 -- pruned after a week (commands must be replayable for at least 24 hours).
 CREATE TABLE IF NOT EXISTS runnerq_commands (
     queue_name  TEXT NOT NULL,
