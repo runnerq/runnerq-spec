@@ -192,6 +192,7 @@ not assume UUIDs. Fields that do not apply are omitted, not null.
   "timeout_ms": 300000,
   "lease_expires_at": "…",
   "executor_id": "…",
+  "version": "2026.11.2",
   "wait": {"kind": "signal", "name": "approve", "until": "…"},
   "metadata": {"tenant": "acme"},
   "last_error": {"message": "…", "kind": "retryable", "at": "…"},
@@ -207,6 +208,7 @@ not assume UUIDs. Fields that do not apply are omitted, not null.
 | `attempt` | The current or last attempt, starting at 1. |
 | `max_attempts` | Total attempts allowed. Absent when unlimited. |
 | `executor_id` | The executor currently running it, if running. |
+| `version` | The code version it is pinned to ([versions.md](../../versions.md)), if any. Filterable, and a `group_by` key for aggregates. |
 | `wait` | Present while `status` is `waiting`. `kind` ∈ `sleep`, `signal`, `children`, `other`. |
 | `payload`, `result`, `last_error` | Returned only when requested with `include` (§6.1), and never in metadata-only mode. |
 | `extensions` | SDK-specific data, keyed by SDK language. The Cloud may display it but must never depend on it. |

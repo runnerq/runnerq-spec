@@ -67,6 +67,9 @@ A wake changes the row's status or due time, never its version.
 The claim needs no new index: the dequeue indexes are walked in claim order
 and the version is checked on each candidate row, as a multi-type claim checks
 `activity_type`. `code_version` is in no index, so a repin is a HOT update.
+The walk passes over runnable work of versions the worker doesn't serve, so
+a large backlog of stranded work (below) slows claims; during a normal
+rollout the old version's tail is small.
 
 **Unversioned workers claim pinned work.** During a migration from no versions
 to versions, a worker without a version still takes everything, stamped or
@@ -171,7 +174,8 @@ a version they all serve.
 
 ## Executors
 
-A worker with a version reports it as its executor label `version`
+The conductor protocol's Activity carries `version`. A worker with a version
+reports it as its executor label `version`
 (overriding an application label of that name), on every path that reports
 executors (the conductor's `hello`, hosted workers' executor reports). Without
 one, labels are as the application set them.

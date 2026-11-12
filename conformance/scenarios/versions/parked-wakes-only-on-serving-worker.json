@@ -8,6 +8,70 @@
       "version": "A"
     },
     {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cs"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "s"
+        ]
+      }
+    },
+    {
+      "op": "park",
+      "claim": "cs",
+      "kind": "sleep",
+      "step": "sleep:nap",
+      "wake_in_s": 3600
+    },
+    {
+      "make_due": "s"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cs2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "s"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "cs2",
+      "value": null
+    },
+    {
       "op": "submit",
       "as": "g",
       "type": "t",
@@ -22,23 +86,14 @@
         "A"
       ],
       "as": [
-        "cs",
         "cg"
       ],
-      "limit": 2,
+      "limit": 1,
       "expect": {
         "claims": [
-          "s",
           "g"
         ]
       }
-    },
-    {
-      "op": "park",
-      "claim": "cs",
-      "kind": "sleep",
-      "step": "sleep:nap",
-      "wake_in_s": 3600
     },
     {
       "op": "park",
@@ -53,9 +108,6 @@
           "go"
         ]
       }
-    },
-    {
-      "make_due": "s"
     },
     {
       "op": "signal",
@@ -92,13 +144,11 @@
         "A"
       ],
       "as": [
-        "cs2",
         "cg2"
       ],
-      "limit": 5,
+      "limit": 1,
       "expect": {
         "claims": [
-          "s",
           "g"
         ]
       }

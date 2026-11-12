@@ -1074,6 +1074,10 @@
           "type": "string",
           "description": "The executor running it, while running."
         },
+        "version": {
+          "type": "string",
+          "description": "The code version it is pinned to (versions.md); absent when unstamped."
+        },
         "wait": {
           "$ref": "#/$defs/Wait",
           "description": "While waiting."

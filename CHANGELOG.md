@@ -25,7 +25,8 @@
 - Storage protocol (additive): `QueuedActivity.CodeVersion`, `versions` on
   `Dequeue`, `DequeueBatch` and `DequeueBatchEncoded`,
   `ActivitySnapshot.code_version`.
-- Conductor protocol: a worker with a version reports it as `labels.version`.
+- Conductor protocol: the Activity resource's optional `version`, and a
+  worker with a version reports it as `labels.version`.
 - Conformance: driver args `version` (`submit`, `upsert_schedule`, `command`),
   `versions` (`claim`) and the `repin` command; 8 scenarios under `versions/`
   (pinned claims, unstamped work, unversioned workers, children inheriting the
