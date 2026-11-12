@@ -57,7 +57,8 @@
       "claim": "c2",
       "expect": {
         "renewed": true
-      }
+      },
+      "lease_ms": 30000
     },
     {
       "op": "claim",
