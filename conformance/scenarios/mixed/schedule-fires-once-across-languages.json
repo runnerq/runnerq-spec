@@ -1,0 +1,78 @@
+{
+  "description": "Go and TypeScript workers firing one queue's due schedule at the same time enqueue each tick once, computing the same fire times in a daylight-saving zone.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 0 1 1 *",
+      "type": "t",
+      "timezone": "America/New_York",
+      "catch_up": "all",
+      "by": "go"
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 0 1 1 *",
+      "type": "t",
+      "timezone": "America/New_York",
+      "catch_up": "all",
+      "by": "ts"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "year",
+      "back": "3 years"
+    },
+    {
+      "fire_race": {
+        "by": [
+          "go",
+          "ts"
+        ],
+        "rounds": 3
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "trunc": "year",
+        "ago": [
+          "3 years -5 hours",
+          "2 years -5 hours",
+          "1 year -5 hours",
+          "-5 hours"
+        ]
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$trunc": [
+            "year",
+            "-5 hours"
+          ]
+        }
+      }
+    },
+    {
+      "op": "fire_schedules",
+      "by": "ts",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "op": "fire_schedules",
+      "by": "go",
+      "expect": {
+        "count": 0
+      }
+    }
+  ]
+}

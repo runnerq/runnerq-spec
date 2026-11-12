@@ -1,0 +1,41 @@
+{
+  "description": "catch_up skip still fires the latest due tick when it is within the grace, and only that one.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "* * * * * *",
+      "type": "t",
+      "catch_up": "skip"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "second",
+      "back": "3 seconds"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "count": 1
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$notnull": true
+        }
+      }
+    }
+  ]
+}

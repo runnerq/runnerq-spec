@@ -1,0 +1,129 @@
+{
+  "description": "Enqueueing a tick and advancing next_fire_at commit together: when either write fails, neither happens, and the tick fires once the writes succeed.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t1"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "fail_writes": "runnerq_schedules",
+      "on": true
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "error": "any"
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t1",
+        "count": 0
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$trunc": [
+            "hour",
+            "0 hours"
+          ]
+        },
+        "last_fire_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "fail_writes": "runnerq_schedules",
+      "on": false
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t1",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ]
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "u",
+      "cron": "0 * * * *",
+      "type": "t2"
+    },
+    {
+      "make_schedule_due": "u",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "fail_writes": "runnerq_inputs",
+      "on": true
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "error": "any"
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "u",
+        "type": "t2",
+        "count": 0
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "u",
+        "next_fire_at": {
+          "$trunc": [
+            "hour",
+            "0 hours"
+          ]
+        },
+        "last_fire_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "fail_writes": "runnerq_inputs",
+      "on": false
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "u",
+        "type": "t2",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ]
+      }
+    }
+  ]
+}

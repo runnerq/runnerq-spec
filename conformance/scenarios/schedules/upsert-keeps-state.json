@@ -1,0 +1,84 @@
+{
+  "description": "Upserting an unchanged definition keeps paused and next_fire_at; changing other fields keeps them too; changing the cron recomputes next_fire_at and still keeps paused.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t"
+    },
+    {
+      "op": "pause_schedule",
+      "name": "s"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "1 hour"
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t"
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": true,
+        "next_fire_at": {
+          "$trunc": [
+            "hour",
+            "1 hour"
+          ]
+        }
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t",
+      "payload": {
+        "v": 2
+      },
+      "catch_up": "all"
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": true,
+        "catch_up": "all",
+        "payload": {
+          "v": 2
+        },
+        "next_fire_at": {
+          "$trunc": [
+            "hour",
+            "1 hour"
+          ]
+        }
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "30 * * * *",
+      "type": "t",
+      "payload": {
+        "v": 2
+      },
+      "catch_up": "all"
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": true,
+        "cron": "30 * * * *",
+        "next_fire_at": {
+          "$future": true
+        }
+      }
+    }
+  ]
+}
