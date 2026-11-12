@@ -1,0 +1,79 @@
+{
+  "description": "A worker without a version adds no predicate (an empty list is the same): it claims stamped and unstamped work as before version pinning, and nothing it submits without a version is stamped.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "version": "B"
+    },
+    {
+      "op": "submit",
+      "as": "u",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "x",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "ca",
+        "cb"
+      ],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [],
+      "as": [
+        "cu",
+        "cx"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "u",
+          "x"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "processing",
+        "code_version": "A"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "u",
+        "status": "processing",
+        "code_version": {
+          "$null": true
+        }
+      }
+    }
+  ]
+}

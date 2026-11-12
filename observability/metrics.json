@@ -3,7 +3,8 @@
   "labels": [
     { "name": "queue", "doc": "The queue the worker serves." },
     { "name": "activity_type", "doc": "The activity's persisted type name." },
-    { "name": "status", "doc": "A canonical activity status (vectors/canonical_status.json): pending, scheduled, running, waiting or dead_letter." }
+    { "name": "status", "doc": "A canonical activity status (vectors/canonical_status.json): pending, scheduled, running, waiting or dead_letter." },
+    { "name": "version", "doc": "A code version activities are pinned to (versions.md); empty for unstamped activities." }
   ],
   "metrics": [
     { "name": "activity_started", "kind": "counter", "unit": "{attempt}", "labels": ["queue", "activity_type"], "doc": "Attempts claimed whose handler started on this worker." },
@@ -26,6 +27,8 @@
     { "name": "activity_completion_persistence", "kind": "histogram", "unit": "s", "labels": ["queue", "activity_type"], "doc": "How long recording a completion took, retries included." },
     { "name": "queue_depth", "kind": "gauge", "unit": "{activity}", "labels": ["queue", "activity_type", "status"], "doc": "Activities in the queue by status, for the statuses listed under the status label. Sampled from the storage's aggregate query; a combination that has dropped to zero is reported as 0." },
     { "name": "queue_oldest_pending_age", "kind": "gauge", "unit": "s", "labels": ["queue"], "doc": "How long the oldest pending (due, unclaimed) activity has been due; 0 when none is pending. Sampled with queue_depth." },
+    { "name": "activities_by_version", "kind": "gauge", "unit": "{activity}", "labels": ["queue", "version"], "doc": "Unfinished activities (pending, scheduled, running or waiting) in the queue by code version. When a version reaches 0 its workers can stop. Sampled with queue_depth, only by workers that have a version; a version that has dropped to zero is reported as 0." },
+    { "name": "activities_unserved", "kind": "gauge", "unit": "{activity}", "labels": ["queue", "version"], "doc": "Runnable activities (due and unclaimed) pinned to a version this worker does not serve, by version, and 0 for each version it serves. A version whose minimum across the queue's workers stays above 0 is served by none of them: stranded work. Sampled with queue_depth, only by workers that have a version." },
     { "name": "activities_in_flight", "kind": "gauge", "unit": "{activity}", "labels": ["queue", "activity_type"], "doc": "Attempts running on this worker now, for every activity type it serves." }
   ]
 }

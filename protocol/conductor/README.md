@@ -155,7 +155,9 @@ answers `hello` with a welcome, or with an error and a 1008 close.
   executor reconnects while its previous session is open, the newest session
   wins and the old one closes with reason `superseded`.
 - **`labels`** are free-form executor tags (region, deploy version). The Cloud
-  can filter and group executors by them.
+  can filter and group executors by them. A worker with a code version
+  ([versions.md](../../versions.md)) reports it as `labels.version`, so the
+  label means the same on every executor that has it.
 - **`config`** is the gateway's settings for this session. The gateway may
   change it at any time with a `config.update` event (§9), so settings never
   require a reconnect.

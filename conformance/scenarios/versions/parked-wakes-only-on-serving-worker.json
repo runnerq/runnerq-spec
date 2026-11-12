@@ -1,0 +1,219 @@
+{
+  "description": "Work parked on a sleep, a signal or a child resumes only on a worker that serves its version: the wake makes it runnable, and only a serving worker's claim takes it.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "s",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "g",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cs",
+        "cg"
+      ],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "s",
+          "g"
+        ]
+      }
+    },
+    {
+      "op": "park",
+      "claim": "cs",
+      "kind": "sleep",
+      "step": "sleep:nap",
+      "wake_in_s": 3600
+    },
+    {
+      "op": "park",
+      "claim": "cg",
+      "kind": "signal",
+      "step": "signal:go",
+      "wake_in_s": 3600,
+      "result_id": {
+        "$checkpoint": [
+          "g",
+          "signal",
+          "go"
+        ]
+      }
+    },
+    {
+      "make_due": "s"
+    },
+    {
+      "op": "signal",
+      "target": "g",
+      "name": "go",
+      "payload": true
+    },
+    {
+      "expect_row": {
+        "activity": "g",
+        "status": "pending",
+        "code_version": "A"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cs2",
+        "cg2"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": [
+          "s",
+          "g"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "cg2",
+      "value": null
+    },
+    {
+      "op": "submit",
+      "as": "p",
+      "type": "parent",
+      "version": "A"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cp"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    },
+    {
+      "op": "submit",
+      "as": "k",
+      "type": "child",
+      "parent": "p",
+      "root": "p",
+      "depth": 1,
+      "fence": "cp"
+    },
+    {
+      "op": "register_dependency",
+      "claim": "cp",
+      "producer": "k"
+    },
+    {
+      "op": "park",
+      "claim": "cp",
+      "kind": "await",
+      "step": "child:k",
+      "wake_in_s": 3600,
+      "result_id": "k",
+      "producer": "k"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "child"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "ck"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "k"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "ck",
+      "value": 1
+    },
+    {
+      "expect_row": {
+        "activity": "p",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "parent"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cp2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "p"
+        ]
+      }
+    }
+  ]
+}

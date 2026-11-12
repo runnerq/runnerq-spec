@@ -24,6 +24,12 @@ a fifth so a fleet doesn't query in step:
 - `queue_oldest_pending_age` comes from the oldest pending activity by
   creation time: now minus the later of its creation and scheduled times.
 - `activities_in_flight` is the worker's own count, for every type it serves.
+- `activities_by_version` and `activities_unserved` are sampled with
+  `queue_depth` (one aggregate grouped by version), by workers that have a
+  version ([versions.md](../versions.md)). `activities_unserved` counts
+  pending activities plus scheduled, retrying or waiting ones that are due,
+  pinned to a version the worker doesn't serve; alert on its minimum across a
+  queue's workers.
 
 ## Tracing
 
@@ -67,5 +73,6 @@ with `time`, `level` and `msg`):
 | warn | `Activity execution lost its claim` | `activity_id`, `activity_type` |
 | debug | `Activity yielded for durable wait` | `activity_id`, `activity_type`, `step`, `wake_at` |
 | error | `Failed to confirm activity completion` | `activity_id`, `activity_type`, `error` |
+| warn | `Runnable work is pinned to a version this worker does not serve` | `queue`, `version`, `count` |
 
 An SDK may log more; these are the ones operators alert on.

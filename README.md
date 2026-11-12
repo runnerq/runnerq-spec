@@ -59,6 +59,8 @@ runnerq-spec/
 │   ├── cron_next_fire.json     cron fire times, across daylight saving
 │   └── schedule_fire.json      what firing a due schedule enqueues
 ├── schedules.md                cron schedules: dialect, firing, catch-up
+├── versions.md                 version pinning: stamping, claims, repin,
+│                               draining, a rolling deploy
 ├── schema/
 │   └── postgres/               migrations, concurrent indexes, catalog
 │                               (see its README)

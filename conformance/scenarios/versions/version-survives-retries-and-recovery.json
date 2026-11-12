@@ -1,0 +1,178 @@
+{
+  "description": "Retries, lease recovery, run now and a retry command keep an activity's version; only a worker serving it claims the activity again.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "version": "A",
+      "max_attempts": 5
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c1"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c1",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "make_due": "a"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expire_lease": "a"
+    },
+    {
+      "op": "reap",
+      "limit": 10,
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending",
+        "code_version": "A"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c3"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "c3",
+      "reason": "fatal",
+      "retryable": false,
+      "expect": {
+        "outcome": "failed"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "ids": [
+        "a"
+      ],
+      "expect": {
+        "applied": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending",
+        "code_version": "A"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "limit": 5,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c4"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    }
+  ]
+}
