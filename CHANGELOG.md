@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- Version pinning ([versions.md](versions.md)). Schema: the nullable
+  `runnerq_activities.code_version` (`0004_code_version`), with no index. A
+  root is stamped with its submitter's version, a child with its root's (the
+  storage reads the root's row), a schedule's fire with the row's
+  `options.code_version`; only the new `repin` command changes it. A worker
+  with a version claims only `code_version IS NULL OR code_version =
+  ANY($served)`; a worker without one adds no predicate, so nothing changes
+  until a version is set.
+- Commands: `repin` (target, `version`), recorded as the stored event
+  `Repinned` (`from`, `to`), canonical `activity.repinned`. The command
+  fingerprint gains the `version` member
+  (`vectors/command_fingerprint.json`; `canonical_event.json` and
+  `internal_events.json` gain the event).
+- Queries: the activity field `version` and the aggregate group key
+  `version`, for draining an old version.
+- Observability: the label `version` and the gauges `activities_by_version`
+  (unfinished activities by version) and `activities_unserved` (runnable
+  work pinned to a version the worker doesn't serve; its minimum across a
+  queue's workers above 0 is stranded work), and the warn log line `Runnable
+  work is pinned to a version this worker does not serve`.
+- Storage protocol (additive): `QueuedActivity.CodeVersion`, `versions` on
+  `Dequeue`, `DequeueBatch` and `DequeueBatchEncoded`,
+  `ActivitySnapshot.code_version`.
+- Conductor protocol: the Activity resource's optional `version`, and a
+  worker with a version reports it as `labels.version`.
+- Conformance: driver args `version` (`submit`, `upsert_schedule`, `command`),
+  `versions` (`claim`) and the `repin` command; 8 scenarios under `versions/`
+  (pinned claims, unstamped work, unversioned workers, children inheriting the
+  root's version, parked work waking only on a serving worker, versions
+  surviving retries and lease recovery, repin through the ledger, repin by
+  status), `schedules/fire-carries-version`, `mixed/versions-across-languages`
+  and repin cases in `commands/invalid-commands`.
+- `tools/chaos -rolling`: a rolling deploy from version A to B under faults,
+  checking that every activity ran only on workers of its version
+  (`RUNNERQ_CHAOS_VERSION` in the worker contract). The Chaos workflow runs it
+  as the `rolling` fleet.
+
 - The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
   Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
   a newer language feature.

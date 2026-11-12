@@ -42,6 +42,7 @@ type run struct {
 	pause       time.Duration
 	pgRestart   string
 	verbose     bool
+	rolling     bool
 
 	db      *pgxpool.Pool
 	sdks    []string
@@ -56,6 +57,7 @@ type run struct {
 	paused   map[string]bool
 	injected map[faultKind]int
 	start    time.Time
+	rollout  rolloutLog
 }
 
 func main() {
@@ -76,6 +78,7 @@ func main() {
 	queue := flag.String("queue", "", "queue name (default: a fresh one per run)")
 	logs := flag.String("logs", "", "directory for worker logs (default: a temporary one)")
 	verbose := flag.Bool("v", false, "log every fault and client call")
+	rolling := flag.Bool("rolling", false, "a rolling deploy: workers and clients start at version A; a quarter into the fault window version B workers start and clients move to B; A workers stop once A's work has drained")
 	flag.Parse()
 
 	if *seed == 0 {
@@ -83,7 +86,7 @@ func main() {
 	}
 	r := &run{
 		seed: *seed, dsn: *dsn, queue: *queue, logs: *logs, concurrency: *concurrency,
-		lease: *lease, pause: *pause, pgRestart: *pgRestart, verbose: *verbose,
+		lease: *lease, pause: *pause, pgRestart: *pgRestart, verbose: *verbose, rolling: *rolling,
 		clients: map[string]*client{}, ids: map[int]string{}, signals: map[int]int{},
 		paused: map[string]bool{}, injected: map[faultKind]int{},
 	}
@@ -167,10 +170,14 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 	} else if err := os.MkdirAll(r.logs, 0o755); err != nil {
 		return err
 	}
+	slots := n
+	if r.rolling {
+		slots = 2 * n // n at version A, then n at version B
+	}
 	r.plan = planWorkload(r.seed, r.sdks, roots, window)
-	r.faults = planFaults(r.seed, kinds, n, window, every)
+	r.faults = planFaults(r.seed, kinds, slots, window, every)
 	fmt.Printf("chaos: queue %s, %d workers (%s), %d roots, %d faults over %s, logs in %s\n",
-		r.queue, n, strings.Join(r.sdks, "+"), roots, len(r.faults), window, r.logs)
+		r.queue, slots, strings.Join(r.sdks, "+"), roots, len(r.faults), window, r.logs)
 
 	ctx := context.Background()
 	db, err := pgxpool.New(ctx, r.dsn)
@@ -183,18 +190,28 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 		return fmt.Errorf("create ledger: %w", err)
 	}
 
+	first := ""
+	if r.rolling {
+		first = versionA
+	}
 	// Clients first: they create the schema.
 	for _, sdk := range r.sdks {
-		c := &client{sdk: sdk, command: cmds[sdk], run: r}
+		c := &client{sdk: sdk, command: cmds[sdk], run: r, version: first}
 		if err := c.start(); err != nil {
 			return err
 		}
 		r.clients[sdk] = c
 		defer c.stop()
 	}
-	for i := range n {
+	for i := range slots {
 		sdk := r.sdks[i%len(r.sdks)]
-		w := &worker{index: i / len(r.sdks), sdk: sdk, command: cmds[sdk], run: r, readyWithin: 2 * time.Minute}
+		w := &worker{index: (i % n) / len(r.sdks), sdk: sdk, command: cmds[sdk], run: r, readyWithin: 2 * time.Minute}
+		if r.rolling {
+			w.version = versionA
+			if i >= n {
+				w.version = versionB
+			}
+		}
 		r.workers = append(r.workers, w)
 	}
 	defer func() {
@@ -202,29 +219,31 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 			w.stop(20 * time.Second)
 		}
 	}()
-	var wg sync.WaitGroup
-	errs := make([]error, len(r.workers))
-	for i, w := range r.workers {
-		wg.Go(func() { errs[i] = w.start() })
-	}
-	wg.Wait()
-	if err := errors.Join(errs...); err != nil {
+	if err := startAll(r.workers[:n]); err != nil {
 		return err
 	}
 
 	r.start = time.Now()
-	var clientErr error
-	var calls, faults sync.WaitGroup
+	var clientErr, rolloutErr error
+	var calls, faults, rollout sync.WaitGroup
+	switched := make(chan struct{})
 	calls.Go(func() { clientErr = r.runSchedule(window + settle) })
 	faults.Go(func() { r.injectFaults() })
+	if r.rolling {
+		rollout.Go(func() { rolloutErr = r.rollOut(n, window/4, window+settle, switched) })
+	} else {
+		close(switched)
+	}
 	faults.Wait()
 	calls.Wait()
 	if clientErr != nil {
 		return clientErr
 	}
-	// Every worker back up, whatever the faults left.
+	<-switched
+	// Every worker back up, whatever the faults left, except retired ones and
+	// a rollout's new workers that have not started.
 	for _, w := range r.workers {
-		if !w.alive() {
+		if !w.alive() && !w.isRetired() && (!r.rolling || w.version == versionA || r.rollout.startedB()) {
 			if err := w.start(); err != nil {
 				return err
 			}
@@ -234,6 +253,10 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 		time.Since(r.start).Seconds(), r.faultSummary())
 	if err := r.awaitQuiescence(settle); err != nil {
 		return err
+	}
+	rollout.Wait()
+	if rolloutErr != nil {
+		return rolloutErr
 	}
 	for _, w := range r.workers {
 		w.stop(20 * time.Second)
@@ -451,4 +474,14 @@ func (r *run) stuck() string {
 		fmt.Fprintf(&b, "  %s %s %s retries=%d worker=%q scheduled=%s error=%q\n", id, typ, status, retries, worker, sched, lastErr)
 	}
 	return b.String()
+}
+
+func startAll(workers []*worker) error {
+	var wg sync.WaitGroup
+	errs := make([]error, len(workers))
+	for i, w := range workers {
+		wg.Go(func() { errs[i] = w.start() })
+	}
+	wg.Wait()
+	return errors.Join(errs...)
 }

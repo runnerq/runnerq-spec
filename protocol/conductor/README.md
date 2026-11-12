@@ -155,7 +155,9 @@ answers `hello` with a welcome, or with an error and a 1008 close.
   executor reconnects while its previous session is open, the newest session
   wins and the old one closes with reason `superseded`.
 - **`labels`** are free-form executor tags (region, deploy version). The Cloud
-  can filter and group executors by them.
+  can filter and group executors by them. A worker with a code version
+  ([versions.md](../../versions.md)) reports it as `labels.version`, so the
+  label means the same on every executor that has it.
 - **`config`** is the gateway's settings for this session. The gateway may
   change it at any time with a `config.update` event (§9), so settings never
   require a reconnect.
@@ -190,6 +192,7 @@ not assume UUIDs. Fields that do not apply are omitted, not null.
   "timeout_ms": 300000,
   "lease_expires_at": "…",
   "executor_id": "…",
+  "version": "2026.11.2",
   "wait": {"kind": "signal", "name": "approve", "until": "…"},
   "metadata": {"tenant": "acme"},
   "last_error": {"message": "…", "kind": "retryable", "at": "…"},
@@ -205,6 +208,7 @@ not assume UUIDs. Fields that do not apply are omitted, not null.
 | `attempt` | The current or last attempt, starting at 1. |
 | `max_attempts` | Total attempts allowed. Absent when unlimited. |
 | `executor_id` | The executor currently running it, if running. |
+| `version` | The code version it is pinned to ([versions.md](../../versions.md)), if any. Filterable, and a `group_by` key for aggregates. |
 | `wait` | Present while `status` is `waiting`. `kind` ∈ `sleep`, `signal`, `children`, `other`. |
 | `payload`, `result`, `last_error` | Returned only when requested with `include` (§6.1), and never in metadata-only mode. |
 | `extensions` | SDK-specific data, keyed by SDK language. The Cloud may display it but must never depend on it. |

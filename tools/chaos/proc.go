@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,6 +23,8 @@ type worker struct {
 	sdk     string
 	command string
 	run     *run
+	// version is the code version the worker runs as (-rolling); "" for none.
+	version string
 
 	mu          sync.Mutex
 	incarnation int
@@ -29,16 +32,32 @@ type worker struct {
 	label       string
 	expectExit  bool
 	paused      bool
+	retired     bool // stopped for good by the rollout; never restarted
 	exited      chan struct{}
 	unexpected  []string
 	readyWithin time.Duration
 }
 
-func (w *worker) name() string { return fmt.Sprintf("%s-%d", w.sdk, w.index) }
+func (w *worker) name() string {
+	if w.version != "" {
+		return fmt.Sprintf("%s@%s-%d", w.sdk, w.version, w.index)
+	}
+	return fmt.Sprintf("%s-%d", w.sdk, w.index)
+}
+
+// labelVersion is the version in a worker label ("go@A-0.3"), or "".
+func labelVersion(label string) string {
+	_, rest, ok := strings.Cut(label, "@")
+	if !ok {
+		return ""
+	}
+	v, _, _ := strings.Cut(rest, "-")
+	return v
+}
 
 func (w *worker) env(label string) []string {
 	r := w.run
-	return append(os.Environ(),
+	env := append(os.Environ(),
 		"RUNNERQ_CHAOS_DSN="+r.dsn,
 		"RUNNERQ_CHAOS_QUEUE="+r.queue,
 		"RUNNERQ_CHAOS_PREFIX="+w.sdk,
@@ -46,11 +65,19 @@ func (w *worker) env(label string) []string {
 		fmt.Sprintf("RUNNERQ_CHAOS_CONCURRENCY=%d", r.concurrency),
 		fmt.Sprintf("RUNNERQ_CHAOS_LEASE_MS=%d", r.lease.Milliseconds()),
 	)
+	if w.version != "" {
+		env = append(env, "RUNNERQ_CHAOS_VERSION="+w.version)
+	}
+	return env
 }
 
 // start launches a new incarnation and waits for its ready line.
 func (w *worker) start() error {
 	w.mu.Lock()
+	if w.retired {
+		w.mu.Unlock()
+		return nil
+	}
 	w.incarnation++
 	label := fmt.Sprintf("%s.%d", w.name(), w.incarnation)
 	w.mu.Unlock()
@@ -145,6 +172,20 @@ func (w *worker) alive() bool {
 	}
 }
 
+// retire stops the worker for good.
+func (w *worker) retire(grace time.Duration) {
+	w.mu.Lock()
+	w.retired = true
+	w.mu.Unlock()
+	w.stop(grace)
+}
+
+func (w *worker) isRetired() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.retired
+}
+
 // stop asks for a graceful shutdown, then kills.
 func (w *worker) stop(grace time.Duration) {
 	w.mu.Lock()
@@ -173,10 +214,19 @@ type client struct {
 	command string
 	run     *run
 
-	mu    sync.Mutex
-	cmd   *exec.Cmd
-	stdin io.WriteCloser
-	lines chan []byte
+	mu      sync.Mutex
+	version string // stamped on the roots it enqueues (-rolling)
+	cmd     *exec.Cmd
+	stdin   io.WriteCloser
+	lines   chan []byte
+}
+
+// setVersion makes the next incarnation enqueue as version, and ends this one.
+func (c *client) setVersion(version string) {
+	c.mu.Lock()
+	c.version = version
+	c.mu.Unlock()
+	c.stop()
 }
 
 func (c *client) start() error {
@@ -191,6 +241,11 @@ func (c *client) start() error {
 		"RUNNERQ_CHAOS_PREFIX="+c.sdk,
 		"RUNNERQ_CHAOS_WORKER="+c.sdk+"-client",
 	)
+	c.mu.Lock()
+	if c.version != "" {
+		cmd.Env = append(cmd.Env, "RUNNERQ_CHAOS_VERSION="+c.version)
+	}
+	c.mu.Unlock()
 	cmd.Stderr = logFile
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := cmd.StdinPipe()

@@ -39,8 +39,8 @@ fresh queue; ids are UUIDs the runner chooses.
 | Op | Args | Reply |
 | --- | --- | --- |
 | `open` | `dsn`, `queue` | `{}`. Initialize the schema if needed and use this queue until the next `open`. |
-| `submit` | `id`, `type`, `payload`, `priority` (1-4), `max_attempts` (0 unlimited), `timeout_s`, `delay_s`, `metadata`, `parent` (id), `root` (id), `depth`, `key` (`{key, on_duplicate}`: `return_existing`, `no_reuse`, `allow_reuse`, `allow_reuse_on_failure`), `fence` (a claim) | `{}`, or `{"existing": id}` when a returned-existing key matched |
-| `claim` | `types`, `limit`, `lease_ms` | `{"claims": [{"id", "token"}]}` in claim order |
+| `submit` | `id`, `type`, `payload`, `priority` (1-4), `max_attempts` (0 unlimited), `timeout_s`, `delay_s`, `metadata`, `parent` (id), `root` (id), `depth`, `key` (`{key, on_duplicate}`: `return_existing`, `no_reuse`, `allow_reuse`, `allow_reuse_on_failure`), `fence` (a claim), `version` (the code version to stamp) | `{}`, or `{"existing": id}` when a returned-existing key matched |
+| `claim` | `types`, `limit`, `lease_ms`, `versions` (claim as a worker serving these code versions; absent or empty: an unversioned worker) | `{"claims": [{"id", "token"}]}` in claim order |
 | `renew` | `claim`, `lease_ms` | `{"renewed": bool}` |
 | `complete` | `claim`, `value` | `{}` |
 | `fail` | `claim`, `reason`, `retryable` | `{"outcome": "retrying" \| "failed" \| "dead_letter"}` |
@@ -52,12 +52,12 @@ fresh queue; ids are UUIDs the runner chooses.
 | `reap` | `limit` | `{"count": n}` |
 | `cleanup` | `completed_s`, `failed_s`, `events_s` (0 off), `batch` | `{"count": n}`, the roots deleted |
 | `get_result` | `id` | `{"result": null \| {"state", "data", "serialization"}}` |
-| `upsert_schedule` | `name`, `cron`, `timezone` (default `UTC`), `type`, `payload`, `priority`, `max_attempts`, `timeout_s`, `metadata`, `catch_up` (default `one`), `catch_up_limit` (default 100) | `{}` |
+| `upsert_schedule` | `name`, `cron`, `timezone` (default `UTC`), `type`, `payload`, `priority`, `max_attempts`, `timeout_s`, `metadata`, `catch_up` (default `one`), `catch_up_limit` (default 100), `version` (stored as `options.code_version`) | `{}` |
 | `pause_schedule`, `resume_schedule`, `delete_schedule` | `name` | `{}` |
 | `trigger_schedule` | `name` | `{"id": id}`, the activity enqueued |
 | `list_schedules` | | `{"names": [...]}`, sorted |
 | `fire_schedules` | | `{"count": n}`, the activities enqueued; fires the queue's due schedules ([schedules.md](../schedules.md)) |
-| `command` | `kind` (`cancel`, `retry`, `run_now`, `reschedule`, `set_priority`, `delete`, `signal`), `command_id`, `fingerprint`, a target (`ids`, or `filter` and `max`), `dry_run`, `reason`, `cascade`, `reset_attempts`, `at`, `priority`, `name`, `payload` (signal) | `{"matched", "applied", "cascaded", "more", "replayed", "items": [{"id", "outcome", "status", "error"}]}` |
+| `command` | `kind` (`cancel`, `retry`, `run_now`, `reschedule`, `set_priority`, `delete`, `signal`, `repin`), `command_id`, `fingerprint`, a target (`ids`, or `filter` and `max`), `dry_run`, `reason`, `cascade`, `reset_attempts`, `at`, `priority`, `name`, `payload` (signal), `version` (repin) | `{"matched", "applied", "cascaded", "more", "replayed", "items": [{"id", "outcome", "status", "error"}]}` |
 
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
 between requests. A `command` is the storage command API (`ApplyCommand` in

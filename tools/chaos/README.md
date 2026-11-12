@@ -33,6 +33,7 @@ at a database that other people or test suites use.
 | `-lease` | 15s | Passed to workers as `RUNNERQ_CHAOS_LEASE_MS`. |
 | `-settle` | 5m | How long the workload may take to finish after the faults. |
 | `-logs` | temp dir | Worker and client stderr, one file per worker slot. |
+| `-rolling` | off | A rolling deploy (below). |
 
 A failing run prints its seed and the command that replays it. Process timing is
 not seeded, so a replay injects the same faults at the same times, but they may
@@ -78,6 +79,21 @@ terminal. Then it stops the fleet and checks:
    after the last child completed. A waiter has between 1 and (sends
    attempted) `Signaled` events.
 
+## Rolling deploy
+
+With `-rolling`, the run is a version change from `A` to `B`
+([versions.md](../../versions.md)). The `-n` workers and the clients start at
+version `A`. A quarter into the fault window, `-n` more workers start at `B`
+and the clients restart at `B`, so later roots are pinned to `B`. Once no
+unfinished activity is pinned to `A`, the `A` workers stop for good. Faults
+hit both generations throughout.
+
+On top of the invariants above, every activity must be pinned to `A` or `B`,
+and every ledger row of an activity (each invocation and step effect) must come
+from a worker of its version: a worker's label carries its version
+(`go@A-0.3`). A run with no activity at either version fails, as it tested
+nothing.
+
 ## Worker contract
 
 An SDK provides one program. The harness runs it as `sh -c "exec <command> <mode>"`
@@ -92,6 +108,7 @@ environment:
 | `RUNNERQ_CHAOS_WORKER` | This incarnation's label, such as `go-1.3`. It is written to every ledger row. |
 | `RUNNERQ_CHAOS_CONCURRENCY` | `work`: activities run at once. |
 | `RUNNERQ_CHAOS_LEASE_MS` | `work`: the claim lease, if the SDK can set it. |
+| `RUNNERQ_CHAOS_VERSION` | Set only by `-rolling`. `work`: the worker's code version (it serves that version and unstamped work). `client`: the version roots are stamped with. |
 
 ### `work`
 

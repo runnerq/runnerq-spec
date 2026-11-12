@@ -1,0 +1,119 @@
+{
+  "description": "A worker with a version claims only unstamped work and work pinned to a version it serves, in claim order, on single and batch claims alike.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a1",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "b1",
+      "type": "t",
+      "version": "B"
+    },
+    {
+      "op": "submit",
+      "as": "u",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "a2",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "expect_row": {
+        "activity": "a1",
+        "code_version": "A"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "u",
+        "code_version": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c1"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a1"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "cu",
+        "c2"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "u",
+          "a2"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A",
+        "C"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "as": [
+        "cb"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "b1"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b1",
+        "status": "processing",
+        "code_version": "B"
+      }
+    }
+  ]
+}

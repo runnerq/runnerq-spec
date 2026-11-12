@@ -11,6 +11,12 @@
           "default": null
         },
         {
+          "name": "code_version",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
           "name": "completed_at",
           "type": "timestamptz",
           "nullable": true,

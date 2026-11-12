@@ -14,6 +14,7 @@
     { "name": "RunNow", "input": { "event_type": "RunNow" }, "output": "activity.run_now" },
     { "name": "Rescheduled", "input": { "event_type": "Rescheduled" }, "output": "activity.rescheduled" },
     { "name": "PriorityChanged", "input": { "event_type": "PriorityChanged" }, "output": "activity.priority_changed" },
+    { "name": "Repinned", "input": { "event_type": "Repinned" }, "output": "activity.repinned" },
     { "name": "unknown becomes other.<lowercase>", "input": { "event_type": "CustomThing" }, "output": "other.customthing" }
   ]
 }

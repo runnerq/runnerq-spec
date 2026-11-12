@@ -1,8 +1,8 @@
 name: Chaos
 
 # The chaos harness (tools/chaos) against both SDKs' main branches: each SDK
-# alone, then a mixed fleet, with workers killed and paused and Postgres
-# restarted. A failure prints the seed; rerun it with the seed input.
+# alone, then a mixed fleet, then a mixed fleet through a rolling deploy from
+# version A to B, with workers killed and paused and Postgres restarted. A failure prints the seed; rerun it with the seed input.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fleet: [go, ts, mixed]
+        fleet: [go, ts, mixed, rolling]
     env:
       DSN: postgres://postgres:test@localhost:5432/postgres
     steps:
@@ -67,6 +67,7 @@ jobs:
             go) workers=(-worker "$go_worker" -n 3) ;;
             ts) workers=(-worker "$ts_worker" -n 3) ;;
             mixed) workers=(-worker "$go_worker" -worker "$ts_worker" -n 4) ;;
+            rolling) workers=(-worker "$go_worker" -worker "$ts_worker" -n 4 -rolling) ;;
           esac
           seed=()
           if [ -n "${{ inputs.seed }}" ]; then seed=(-seed "${{ inputs.seed }}"); fi
