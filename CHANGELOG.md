@@ -5,6 +5,17 @@
 - The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
   Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
   a newer language feature.
+- Observability: `observability/metrics.json` names every metric both SDKs
+  emit (kind, unit, labels `queue`, `activity_type`, `status`), including new
+  gauges `queue_depth`, `queue_oldest_pending_age` and `activities_in_flight`
+  and the `activity_execution` histogram. `observability/tracing.json` names
+  the spans (`runnerq.enqueue`, `runnerq.attempt`, `runnerq.step`,
+  `runnerq.sleep`, `runnerq.signal.wait`, `runnerq.signal.send`), their
+  attributes and outcomes, and the `traceparent` metadata key.
+- Vectors: `traceparent.json`, which traceparent an enqueue stores: the
+  caller's, else the enqueue span's, else the enqueueing parent's.
+- Generator: `-part observability` writes those names as Go or TypeScript.
+- Conformance: `mixed/traceparent-in-metadata`.
 
 ## 0.9.0
 
