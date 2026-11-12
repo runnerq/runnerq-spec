@@ -1,0 +1,271 @@
+{
+  "description": "Run now makes scheduled, retrying and waiting activities due at once and skips every other status, pending included.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "run_now",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "matched": 9,
+        "applied": 3,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "scheduled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "scheduled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_pending",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_scheduled",
+        "status": "scheduled",
+        "scheduled_at": {
+          "$past": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_retrying",
+        "status": "retrying",
+        "scheduled_at": {
+          "$past": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "processing"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_completed",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_failed",
+        "status": "failed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_dead_letter",
+        "status": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_cancelled",
+        "status": "cancelled"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "s_scheduled"
+      ],
+      "as": [
+        "cs"
+      ],
+      "expect": {
+        "claims": [
+          "s_scheduled"
+        ]
+      }
+    },
+    {
+      "op": "command",
+      "kind": "run_now",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "matched": 9,
+        "applied": 3,
+        "replayed": true,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "scheduled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "scheduled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "run_now",
+      "command_id": "cmd-1",
+      "fingerprint": "f2",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "error": "conflict"
+      }
+    }
+  ]
+}
