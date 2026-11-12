@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
+  Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
+  a newer language feature.
 - `tools/chaos`: a chaos harness. It runs a seeded workload on a fleet of Go,
   TypeScript or mixed worker processes, kills workers, pauses them past their
   lease and restarts Postgres. It then checks in SQL that every activity
