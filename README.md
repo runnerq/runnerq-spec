@@ -53,6 +53,7 @@ runnerq-spec/
 │   ├── canonical_status.json
 │   ├── canonical_event.json
 │   ├── internal_events.json
+│   ├── command_fingerprint.json  management command identity
 │   ├── index_definition.json   catalog normalization
 │   ├── column_default.json
 │   ├── cron_next_fire.json     cron fire times, across daylight saving

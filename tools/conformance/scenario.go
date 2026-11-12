@@ -68,11 +68,17 @@ func (sc *scenario) drivers() []string {
 			FireRace *struct {
 				By []string `json:"by"`
 			} `json:"fire_race"`
+			EachStatus *struct {
+				By string `json:"by"`
+			} `json:"each_status"`
 		}
 		_ = json.Unmarshal(raw, &s)
 		add(s.By)
 		if s.SubmitMany != nil {
 			add(s.SubmitMany.By)
+		}
+		if s.EachStatus != nil {
+			add(s.EachStatus.By)
 		}
 		if s.Drain != nil {
 			add(s.Drain.By...)
@@ -207,6 +213,8 @@ func (r *runner) step(ctx context.Context, step map[string]json.RawMessage) erro
 		return r.expectSchedule(ctx, step["expect_schedule"])
 	case step["expect_fires"] != nil:
 		return r.expectFires(ctx, step["expect_fires"])
+	case step["each_status"] != nil:
+		return r.eachStatus(step["each_status"])
 	case step["expect_row"] != nil:
 		return r.expectRow(ctx, step["expect_row"])
 	case step["expect_events"] != nil:
@@ -257,11 +265,11 @@ func (r *runner) operation(step map[string]json.RawMessage) error {
 		}
 		args["id"] = r.ids[name]
 	}
-	if op == "park" {
-		if v, ok := args["wake_in_s"]; ok {
+	for in, at := range map[string]string{"wake_in_s": "wake_at", "at_in_s": "at"} {
+		if v, ok := args[in]; ok {
 			secs, _ := v.(float64)
-			args["wake_at"] = time.Now().UTC().Add(time.Duration(secs * float64(time.Second))).Format("2006-01-02T15:04:05.000Z")
-			delete(args, "wake_in_s")
+			args[at] = time.Now().UTC().Add(time.Duration(secs * float64(time.Second))).Format("2006-01-02T15:04:05.000Z")
+			delete(args, in)
 		}
 	}
 	rep, err := d.call(op, args, 30*time.Second)
@@ -316,8 +324,13 @@ func (r *runner) operation(step map[string]json.RawMessage) error {
 			}
 		}
 	}
+	if raw := expect["items"]; raw != nil {
+		if err := r.matchItems(raw, got["items"]); err != nil {
+			return err
+		}
+	}
 	for k, want := range expect {
-		if k == "claims" {
+		if k == "claims" || k == "items" {
 			continue
 		}
 		if err := r.match(k, want, got[k], time.Now()); err != nil {
@@ -339,6 +352,16 @@ func (r *runner) resolveArg(key string, v json.RawMessage) (any, error) {
 		return c, nil
 	case slices.Contains(activityArgs, key):
 		return r.ref(str(v)), nil
+	case key == "ids":
+		var names []string
+		if err := json.Unmarshal(v, &names); err != nil {
+			return nil, fmt.Errorf("ids: want a list of names")
+		}
+		ids := make([]string, len(names))
+		for i, n := range names {
+			ids[i] = r.ref(n)
+		}
+		return ids, nil
 	case key == "result_id" || key == "id":
 		return r.resultID(v)
 	case key == "key" && bytes.HasPrefix(bytes.TrimSpace(v), []byte("[")):
@@ -387,6 +410,46 @@ func (r *runner) names(ids []string) []string {
 		}
 	}
 	return out
+}
+
+// matchItems checks a command reply's items: want maps an activity name to
+// the fields its item must have, and names every item the reply may hold.
+func (r *runner) matchItems(raw, got json.RawMessage) error {
+	var want map[string]map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &want); err != nil {
+		return fmt.Errorf("expect items: %w", err)
+	}
+	var items []map[string]json.RawMessage
+	if err := json.Unmarshal(got, &items); err != nil {
+		return fmt.Errorf("items = %s: %w", orNull(got), err)
+	}
+	byID := map[string]map[string]json.RawMessage{}
+	for _, it := range items {
+		byID[str(it["id"])] = it
+	}
+	if len(byID) != len(items) {
+		return fmt.Errorf("items name an activity twice: %s", got)
+	}
+	for name, fields := range want {
+		it, ok := byID[r.ref(name)]
+		if !ok {
+			return fmt.Errorf("no item for %s in %s", name, got)
+		}
+		delete(byID, r.ref(name))
+		for k, w := range fields {
+			if err := r.match(name+"."+k, w, it[k], time.Now()); err != nil {
+				return err
+			}
+		}
+	}
+	if len(byID) > 0 {
+		ids := make([]string, 0, len(byID))
+		for id := range byID {
+			ids = append(ids, id)
+		}
+		return fmt.Errorf("unexpected items for %v", r.names(ids))
+	}
+	return nil
 }
 
 func (r *runner) expectRow(ctx context.Context, raw json.RawMessage) error {
@@ -718,6 +781,111 @@ func (r *runner) submitMany(raw json.RawMessage) error {
 		if rep.Error != nil {
 			return fmt.Errorf("submit: %s: %s", rep.Error.Kind, rep.Error.Message)
 		}
+	}
+	return nil
+}
+
+// statuses are what eachStatus creates, in order.
+var statuses = []string{"pending", "scheduled", "retrying", "running", "waiting", "completed", "failed", "dead_letter", "cancelled"}
+
+// eachStatus puts one activity in every stored status through a driver:
+// <prefix><status>, of type <prefix><status>. The running one is claimed as
+// <prefix>running.
+func (r *runner) eachStatus(raw json.RawMessage) error {
+	var m struct {
+		Prefix string `json:"prefix"`
+		By     string `json:"by"`
+	}
+	if err := strictUnmarshal(raw, &m); err != nil {
+		return err
+	}
+	d := r.first
+	if m.By != "" {
+		d = r.drivers[m.By]
+	}
+	call := func(op string, args map[string]any) (map[string]json.RawMessage, error) {
+		rep, err := d.call(op, args, 30*time.Second)
+		if err == nil && rep.Error != nil {
+			err = fmt.Errorf("%s: %s: %s", op, rep.Error.Kind, rep.Error.Message)
+		}
+		if err != nil {
+			return nil, err
+		}
+		var got map[string]json.RawMessage
+		_ = json.Unmarshal(rep.OK, &got)
+		return got, nil
+	}
+	claimOne := func(name string) (claim, error) {
+		got, err := call("claim", map[string]any{"types": []string{name}, "limit": 1, "lease_ms": 60000})
+		if err != nil {
+			return claim{}, err
+		}
+		var claims []claim
+		_ = json.Unmarshal(got["claims"], &claims)
+		if len(claims) != 1 || claims[0].ID != r.ref(name) {
+			return claim{}, fmt.Errorf("could not claim %s", name)
+		}
+		return claims[0], nil
+	}
+	for _, status := range statuses {
+		name := m.Prefix + status
+		submit := map[string]any{"id": r.ref(name), "type": name}
+		switch status {
+		case "scheduled":
+			submit["delay_s"] = 3600
+		case "dead_letter":
+			submit["max_attempts"] = 1
+		}
+		if _, err := call("submit", submit); err != nil {
+			return err
+		}
+		switch status {
+		case "pending", "scheduled":
+			continue
+		case "cancelled":
+			if _, err := call("command", map[string]any{"kind": "cancel", "ids": []string{r.ref(name)}}); err != nil {
+				return err
+			}
+			continue
+		}
+		c, err := claimOne(name)
+		if err != nil {
+			return err
+		}
+		switch status {
+		case "running":
+			r.claims[name] = c
+		case "retrying", "dead_letter":
+			_, err = call("fail", map[string]any{"claim": c, "reason": "boom", "retryable": true})
+		case "failed":
+			_, err = call("fail", map[string]any{"claim": c, "reason": "boom", "retryable": false})
+		case "completed":
+			_, err = call("complete", map[string]any{"claim": c, "value": nil})
+		case "waiting":
+			_, err = call("park", map[string]any{"claim": c, "kind": "sleep", "step": "sleep:nap",
+				"wake_at": time.Now().UTC().Add(time.Hour).Format("2006-01-02T15:04:05.000Z")})
+		}
+		if err != nil {
+			return err
+		}
+	}
+	ids := make([]string, len(statuses))
+	for i, s := range statuses {
+		ids[i] = r.ref(m.Prefix + s)
+	}
+	rows, err := r.db.Query(context.Background(), `SELECT status FROM runnerq_activities
+		WHERE queue_name = $1 AND id = ANY($2::uuid[]) ORDER BY array_position($2::uuid[], id)`, r.queue, ids)
+	if err != nil {
+		return err
+	}
+	got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return err
+	}
+	want := slices.Clone(statuses)
+	want[slices.Index(want, "running")] = "processing"
+	if !slices.Equal(got, want) {
+		return fmt.Errorf("each_status made %v, want %v", got, want)
 	}
 	return nil
 }

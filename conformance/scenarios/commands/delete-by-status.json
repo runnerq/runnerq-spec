@@ -1,0 +1,259 @@
+{
+  "description": "Delete removes finished root activities with everything they own and skips unfinished ones; a replay answers from the ledger after the rows are gone.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "delete",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "matched": 9,
+        "applied": 4,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_retrying": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "skipped",
+            "status": "waiting",
+            "error": "conflict"
+          },
+          "s_completed": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_failed": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_dead_letter": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_cancelled": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_pending",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_scheduled",
+        "status": "scheduled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_retrying",
+        "status": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "processing"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "status": "waiting"
+      }
+    },
+    {
+      "expect_absent": "s_completed"
+    },
+    {
+      "expect_absent": "s_failed"
+    },
+    {
+      "expect_absent": "s_dead_letter"
+    },
+    {
+      "expect_absent": "s_cancelled"
+    },
+    {
+      "op": "command",
+      "kind": "delete",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "matched": 9,
+        "applied": 4,
+        "replayed": true,
+        "items": {
+          "s_pending": {
+            "outcome": "skipped",
+            "status": "pending",
+            "error": "conflict"
+          },
+          "s_scheduled": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_retrying": {
+            "outcome": "skipped",
+            "status": "scheduled",
+            "error": "conflict"
+          },
+          "s_running": {
+            "outcome": "skipped",
+            "status": "running",
+            "error": "conflict"
+          },
+          "s_waiting": {
+            "outcome": "skipped",
+            "status": "waiting",
+            "error": "conflict"
+          },
+          "s_completed": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_failed": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_dead_letter": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "s_cancelled": {
+            "outcome": "applied",
+            "status": {
+              "$null": true
+            },
+            "error": {
+              "$null": true
+            }
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "delete",
+      "command_id": "cmd-1",
+      "fingerprint": "f2",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "expect": {
+        "error": "conflict"
+      }
+    }
+  ]
+}

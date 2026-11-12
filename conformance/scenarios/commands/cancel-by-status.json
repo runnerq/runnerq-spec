@@ -1,0 +1,448 @@
+{
+  "description": "Cancel applies to every unfinished status, running included, and skips finished ones and unknown ids; a dry run changes nothing; the same command id replays the recorded result, and the same id with other input is a conflict.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "dry_run": true,
+      "expect": {
+        "applied": 0,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "would_apply",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_scheduled": {
+            "outcome": "would_apply",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "would_apply",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "would_apply",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_waiting": {
+            "outcome": "would_apply",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_pending",
+        "status": "pending"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_scheduled",
+        "status": "scheduled"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_retrying",
+        "status": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "processing"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "status": "waiting"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_completed",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_failed",
+        "status": "failed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_dead_letter",
+        "status": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_cancelled",
+        "status": "cancelled"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reason": "operator",
+      "expect": {
+        "matched": 9,
+        "applied": 5,
+        "replayed": false,
+        "items": {
+          "s_pending": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_pending",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_scheduled",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_retrying",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "status": "cancelled",
+        "current_worker_id": {
+          "$null": true
+        },
+        "completed_at": {
+          "$notnull": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_completed",
+        "status": "completed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_failed",
+        "status": "failed"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_dead_letter",
+        "status": "dead_letter"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_cancelled",
+        "status": "cancelled"
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "s_running",
+        "types": [
+          "Cancelled"
+        ]
+      }
+    },
+    {
+      "expect_result": {
+        "id": "s_pending",
+        "data_subset": {
+          "type": "cancelled",
+          "error": "activity cancelled: operator"
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "cmd-1",
+      "fingerprint": "f1",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reason": "operator",
+      "expect": {
+        "matched": 9,
+        "applied": 5,
+        "replayed": true,
+        "items": {
+          "s_pending": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_running": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "cancelled",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "status": {
+              "$null": true
+            },
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "cancel",
+      "command_id": "cmd-1",
+      "fingerprint": "f2",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled",
+        "ghost"
+      ],
+      "reason": "operator",
+      "expect": {
+        "error": "conflict"
+      }
+    }
+  ]
+}
