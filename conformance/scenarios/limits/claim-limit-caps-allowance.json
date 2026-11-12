@@ -1,0 +1,60 @@
+{
+  "description": "A claim never takes more than its own limit, whatever the room under the type's limit; a rate spends only the tokens of what was claimed.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 10,
+      "rate_tokens": 10,
+      "rate_per_s": 3600
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 6,
+        "type": "t"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 2,
+      "expect": {
+        "claims": [
+          "a0",
+          "a1"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a2",
+          "a3",
+          "a4",
+          "a5"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}

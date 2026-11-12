@@ -1,0 +1,120 @@
+{
+  "description": "Only running activities count against max_concurrent: one parked on a sleep or waiting out a retry's backoff holds no slot.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 1
+    },
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "c",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "ca"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "park",
+      "claim": "ca",
+      "kind": "sleep",
+      "step": "sleep:nap",
+      "wake_in_s": 3600
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "waiting"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "cb"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "b"
+        ]
+      }
+    },
+    {
+      "op": "fail",
+      "claim": "cb",
+      "reason": "boom",
+      "retryable": true,
+      "expect": {
+        "outcome": "retrying"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "retrying"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "cc"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "c"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}

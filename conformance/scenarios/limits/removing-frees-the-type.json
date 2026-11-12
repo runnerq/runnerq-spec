@@ -1,0 +1,62 @@
+{
+  "description": "Deleting a limit lets the next claim take the type freely, from the same or another handle.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 1
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 4,
+        "type": "t"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c0"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a0"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "delete_limit",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a1",
+          "a2",
+          "a3"
+        ]
+      }
+    }
+  ]
+}

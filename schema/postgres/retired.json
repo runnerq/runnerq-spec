@@ -34,6 +34,10 @@
     {
       "name": "idx_runnerq_dependencies_producer",
       "doc": "A producer is always the result's own activity, so deleting a tree reads idx_runnerq_dependencies_result."
+    },
+    {
+      "name": "idx_runnerq_activities_processing",
+      "doc": "Replaced by idx_runnerq_processing, itself replaced by idx_runnerq_processing_v2 (0005_limits), so no concurrent index names it any more."
     }
   ]
 }

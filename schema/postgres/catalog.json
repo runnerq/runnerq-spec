@@ -366,6 +366,63 @@
       ]
     },
     {
+      "name": "runnerq_limits",
+      "columns": [
+        {
+          "name": "activity_type",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "max_concurrent",
+          "type": "int4",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "queue_name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "rate_per_seconds",
+          "type": "float8",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "rate_tokens",
+          "type": "int4",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "refilled_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "tokens",
+          "type": "float8",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "queue_name",
+        "activity_type"
+      ]
+    },
+    {
       "name": "runnerq_results",
       "columns": [
         {
@@ -558,9 +615,9 @@
       "definition": "CREATE INDEX idx_runnerq_parent_id ON runnerq_activities USING btree (parent_activity_id) WHERE (parent_activity_id IS NOT NULL)"
     },
     {
-      "name": "idx_runnerq_processing",
+      "name": "idx_runnerq_processing_v2",
       "table": "runnerq_activities",
-      "definition": "CREATE INDEX idx_runnerq_processing ON runnerq_activities USING btree (queue_name) WHERE (status = 'processing'::text)"
+      "definition": "CREATE INDEX idx_runnerq_processing_v2 ON runnerq_activities USING btree (queue_name, activity_type) WHERE (status = 'processing'::text)"
     },
     {
       "name": "idx_runnerq_query_created",
@@ -601,7 +658,7 @@
       "idx_runnerq_dequeue_effective",
       "idx_runnerq_dequeue_order",
       "idx_runnerq_query_status_created",
-      "idx_runnerq_activities_processing",
+      "idx_runnerq_processing",
       "idx_runnerq_root_id",
       "idx_runnerq_root_terminal_age",
       "idx_runnerq_results_owner",
@@ -611,7 +668,8 @@
       "idx_runnerq_root_only",
       "idx_runnerq_root_status",
       "idx_runnerq_query_type_created",
-      "idx_runnerq_dependencies_producer"
+      "idx_runnerq_dependencies_producer",
+      "idx_runnerq_activities_processing"
     ]
   }
 }

@@ -68,6 +68,9 @@ func (sc *scenario) drivers() []string {
 			FireRace *struct {
 				By []string `json:"by"`
 			} `json:"fire_race"`
+			LimitRace *struct {
+				By []string `json:"by"`
+			} `json:"limit_race"`
 			EachStatus *struct {
 				By string `json:"by"`
 			} `json:"each_status"`
@@ -85,6 +88,9 @@ func (sc *scenario) drivers() []string {
 		}
 		if s.FireRace != nil {
 			add(s.FireRace.By...)
+		}
+		if s.LimitRace != nil {
+			add(s.LimitRace.By...)
 		}
 	}
 	return out
@@ -203,6 +209,12 @@ func (r *runner) step(ctx context.Context, step map[string]json.RawMessage) erro
 		return r.submitMany(step["submit_many"])
 	case step["fire_race"] != nil:
 		return r.fireRace(step["fire_race"])
+	case step["limit_race"] != nil:
+		return r.limitRace(ctx, step["limit_race"])
+	case step["backdate_limit"] != nil:
+		return r.backdateLimit(ctx, str(step["backdate_limit"]), step["seconds"])
+	case step["expect_limit"] != nil:
+		return r.expectLimit(ctx, step["expect_limit"])
 	case step["make_schedule_due"] != nil:
 		return r.exec(ctx, `UPDATE runnerq_schedules
 			SET next_fire_at = (date_trunc($3, NOW() AT TIME ZONE 'UTC') - $4::interval) AT TIME ZONE 'UTC'
