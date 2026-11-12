@@ -1,0 +1,125 @@
+{
+  "description": "A schedule's options are resolved when it is upserted and stored complete in the row, so the fired activity's priority, attempts, timeout and retry settings are the upserting SDK's, whichever SDK fires the tick: Go upserts and TypeScript fires, and the reverse.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "by": "go",
+      "name": "g",
+      "cron": "0 * * * *",
+      "type": "tg",
+      "priority": 3,
+      "max_attempts": 6,
+      "timeout_s": 75,
+      "metadata": {
+        "by": "go"
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "by": "ts",
+      "name": "t",
+      "cron": "0 * * * *",
+      "type": "tt",
+      "priority": 1,
+      "max_attempts": 0,
+      "timeout_s": 40,
+      "metadata": {
+        "by": "ts"
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "g",
+        "options": {
+          "priority": 3,
+          "max_retries": 6,
+          "timeout_seconds": 75,
+          "retry_delay_seconds": 1,
+          "max_retry_delay_seconds": 0,
+          "metadata": {
+            "by": "go"
+          }
+        }
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "t",
+        "options": {
+          "priority": 1,
+          "max_retries": 0,
+          "timeout_seconds": 40,
+          "retry_delay_seconds": 1,
+          "max_retry_delay_seconds": 0,
+          "metadata": {
+            "by": "ts"
+          }
+        }
+      }
+    },
+    {
+      "make_schedule_due": "g",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "by": "ts",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "g",
+        "type": "tg",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ],
+        "row": {
+          "priority": 3,
+          "max_retries": 6,
+          "timeout_seconds": 75,
+          "retry_delay_seconds": 1,
+          "max_retry_delay_seconds": 0,
+          "metadata": {
+            "by": "go"
+          }
+        }
+      }
+    },
+    {
+      "make_schedule_due": "t",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "by": "go",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "t",
+        "type": "tt",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ],
+        "row": {
+          "priority": 1,
+          "max_retries": 0,
+          "timeout_seconds": 40,
+          "retry_delay_seconds": 1,
+          "max_retry_delay_seconds": 0,
+          "metadata": {
+            "by": "ts"
+          }
+        }
+      }
+    }
+  ]
+}

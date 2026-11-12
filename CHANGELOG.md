@@ -19,8 +19,9 @@
   implementation in `verify/cron_test.go`.
 - Conformance: 11 schedule scenarios (firing once, a lost advance, atomic
   enqueue and advance, each catch-up mode, pause, resume, trigger, upsert)
-  and 2 mixed-fleet ones (Go and TypeScript racing a due schedule, and each
-  managing the other's schedules). Driver ops `upsert_schedule`,
+  and 3 mixed-fleet ones (Go and TypeScript racing a due schedule, each
+  managing the other's schedules, and options stored at upsert so a fire is
+  the same whichever SDK fires it). Driver ops `upsert_schedule`,
   `pause_schedule`, `resume_schedule`, `trigger_schedule`, `delete_schedule`,
   `list_schedules` and `fire_schedules`; runner steps `make_schedule_due`,
   `fail_writes`, `fire_race`, `expect_schedule` and `expect_fires`.

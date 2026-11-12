@@ -32,8 +32,11 @@ each tick once.
 | `max_retry_delay_seconds` | 0 (the default cap) | `max_retry_delay_seconds` |
 | `metadata` | `{}` | `metadata` (string values) |
 
-The SDKs write every key from their own activity defaults, so the defaults
-here only matter for rows written by other means.
+Options are resolved when a schedule is upserted: an SDK writes every key,
+filling what the application left out from its own activity defaults. Firing
+reads only the row, so a tick's activity is the same whichever SDK fires it;
+the defaults above apply only to keys a row lacks (written by other means),
+and every implementation applies the same ones.
 
 ## Cron dialect
 
