@@ -1,0 +1,35 @@
+{
+  "description": "Go and TypeScript workers claiming and completing a type limited to 3 at the same time never have more than 3 of it running between them, and between them run it all once.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 3,
+      "by": "ts"
+    },
+    {
+      "sleep_ms": 1100
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 60,
+        "type": "t",
+        "by": "go"
+      }
+    },
+    {
+      "limit_race": {
+        "type": "t",
+        "by": [
+          "go",
+          "ts"
+        ],
+        "limit": 4,
+        "prefix": "a",
+        "n": 60,
+        "max_running": 3
+      }
+    }
+  ]
+}

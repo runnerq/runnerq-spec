@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,11 @@ const (
 	activityTimeoutS = 10
 	maxRetryDelayS   = 2
 )
+
+// limitedMax is the max_concurrent workers declare for <prefix>.limited
+// (RUNNERQ_CHAOS_LIMIT); the harness checks the running count never exceeds
+// it.
+const limitedMax = 2
 
 type kind string
 
@@ -58,7 +64,7 @@ type flowResult struct {
 type root struct {
 	index    int
 	kind     kind
-	typ      string // <prefix>.flow
+	typ      string // <prefix>.flow or <prefix>.limited
 	key      string
 	input    flowInput
 	enqueue  time.Duration // after the run starts
@@ -144,7 +150,28 @@ func planWorkload(seed int64, sdks []string, roots int, window time.Duration) []
 		}
 		plan[i] = r
 	}
+	limitWorkload(seed, plan)
 	return plan
+}
+
+// limitWorkload moves about half the activities that never park (step-only
+// roots and children) to <prefix>.limited. It draws from its own stream, so
+// the rest of a seed's plan is what it was before limits existed.
+func limitWorkload(seed int64, plan []root) {
+	rng := newRNG(seed, 3)
+	limited := func(typ string) string { return strings.TrimSuffix(typ, ".flow") + ".limited" }
+	for i := range plan {
+		r := &plan[i]
+		if r.kind == kindSteps && rng.IntN(2) == 0 {
+			r.typ = limited(r.typ)
+		}
+		for j := range r.input.Children {
+			c := &r.input.Children[j]
+			if c.Payload.SleepMS == 0 && rng.IntN(2) == 0 {
+				c.Type = limited(c.Type)
+			}
+		}
+	}
 }
 
 func planFaults(seed int64, kinds []faultKind, workers int, window, every time.Duration) []fault {

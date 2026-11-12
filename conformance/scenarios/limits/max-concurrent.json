@@ -1,0 +1,121 @@
+{
+  "description": "A type with max_concurrent 2 has at most 2 running: a claim takes up to the room left, in the usual priority order, and a completion makes room for one more.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 2
+    },
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "c",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "d",
+      "type": "t",
+      "priority": 4
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "cd",
+        "ca"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "d",
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "b",
+        "status": "pending"
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "ca",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "cb"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "b"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "cd",
+      "value": null
+    },
+    {
+      "op": "complete",
+      "claim": "cb",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "cc"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "c"
+        ]
+      }
+    }
+  ]
+}

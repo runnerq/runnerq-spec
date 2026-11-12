@@ -1,0 +1,180 @@
+{
+  "description": "A limit one SDK sets binds the other: both read the same definition, share the running count and spend one rate bucket, and a limit lowered or deleted in one takes effect on the other's next claim.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 2,
+      "rate_tokens": 3,
+      "rate_per_s": 3600,
+      "by": "go"
+    },
+    {
+      "sleep_ms": 1100
+    },
+    {
+      "op": "get_limit",
+      "type": "t",
+      "by": "ts",
+      "expect": {
+        "limit": {
+          "max_concurrent": 2,
+          "rate_tokens": 3,
+          "rate_per_s": 3600
+        }
+      }
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 6,
+        "type": "t",
+        "by": "ts"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c0"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "a0"
+        ]
+      },
+      "by": "ts"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c1"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a1"
+        ]
+      },
+      "by": "go"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      },
+      "by": "ts"
+    },
+    {
+      "op": "complete",
+      "claim": "c0",
+      "value": null,
+      "by": "go"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c2"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a2"
+        ]
+      },
+      "by": "ts"
+    },
+    {
+      "op": "complete",
+      "claim": "c1",
+      "value": null,
+      "by": "ts"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      },
+      "by": "go"
+    },
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 1,
+      "by": "ts"
+    },
+    {
+      "expect_limit": {
+        "type": "t",
+        "rate_tokens": {
+          "$null": true
+        },
+        "rate_per_seconds": {
+          "$null": true
+        },
+        "tokens": 0
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      },
+      "by": "go"
+    },
+    {
+      "op": "list_limits",
+      "by": "go",
+      "expect": {
+        "types": [
+          "t"
+        ]
+      }
+    },
+    {
+      "op": "delete_limit",
+      "type": "t",
+      "by": "go"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a3",
+          "a4",
+          "a5"
+        ]
+      },
+      "by": "ts"
+    }
+  ]
+}

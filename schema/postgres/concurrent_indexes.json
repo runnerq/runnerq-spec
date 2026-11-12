@@ -29,11 +29,11 @@
       "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_query_status\nON runnerq_activities (status, created_at DESC, id DESC)\nWHERE status <> 'completed'"
     },
     {
-      "name": "idx_runnerq_processing",
+      "name": "idx_runnerq_processing_v2",
       "table": "runnerq_activities",
-      "replaces": "idx_runnerq_activities_processing",
-      "doc": "The reaper's scan of a queue's in-flight activities, which fleet concurrency bounds; it checks the lease on the row. Leaving lease_deadline_ms out of the key lets lease renewals update in place (HOT).",
-      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_processing\nON runnerq_activities (queue_name)\nWHERE status = 'processing'"
+      "replaces": "idx_runnerq_processing",
+      "doc": "A queue's in-flight activities by type: the reaper's scan of a queue's in-flight activities (which fleet concurrency bounds; it checks the lease on the row), and a limited claim's count of a type's running activities (limits.md). Leaving lease_deadline_ms out of the key lets lease renewals update in place (HOT).",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runnerq_processing_v2\nON runnerq_activities (queue_name, activity_type)\nWHERE status = 'processing'"
     },
     {
       "name": "idx_runnerq_root_children",
