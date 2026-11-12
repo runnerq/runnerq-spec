@@ -389,6 +389,10 @@ func TestInternalEvents(t *testing.T) {
 }
 
 func defaultMaxRetryDelay(t *testing.T) int64 {
+	return constantInt(t, "default_max_retry_delay_seconds")
+}
+
+func constantInt(t *testing.T, name string) int64 {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "constants", "constants.json"))
 	if err != nil {
@@ -401,7 +405,7 @@ func defaultMaxRetryDelay(t *testing.T) int64 {
 		t.Fatal(err)
 	}
 	for _, c := range f.Constants {
-		if c.Name == "default_max_retry_delay_seconds" {
+		if c.Name == name {
 			n, err := strconv.ParseInt(c.Value, 10, 64)
 			if err != nil {
 				t.Fatal(err)
@@ -409,7 +413,7 @@ func defaultMaxRetryDelay(t *testing.T) int64 {
 			return n
 		}
 	}
-	t.Fatal("constants.json lacks default_max_retry_delay_seconds")
+	t.Fatalf("constants.json lacks %s", name)
 	return 0
 }
 

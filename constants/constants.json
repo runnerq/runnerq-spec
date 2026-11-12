@@ -47,6 +47,24 @@
       "type": "string",
       "value": "superjson-v1",
       "doc": "The TypeScript SDK's serialization: a SuperJSON {json, meta} envelope."
+    },
+    {
+      "name": "schedule_key_prefix",
+      "type": "string",
+      "value": "schedule:",
+      "doc": "The prefix of the application idempotency key of an activity a schedule fires: schedule:<name>:<fire time>, the fire time in RFC 3339 UTC to the second (schedules.md). Stored encoded as a business key."
+    },
+    {
+      "name": "schedule_catch_up_grace_seconds",
+      "type": "int",
+      "value": "60",
+      "doc": "How late a schedule's tick may be fired and still count as on time: catch_up 'skip' fires a due tick only when it is less than this many seconds old (schedules.md)."
+    },
+    {
+      "name": "schedule_catch_up_limit_default",
+      "type": "int",
+      "value": "100",
+      "doc": "How many due ticks catch_up 'all' fires at once when a schedule sets none: runnerq_schedules.catch_up_limit's default (schedules.md)."
     }
   ],
   "enums": [
