@@ -20,6 +20,7 @@
     { "name": "activity_heartbeat_failed", "kind": "counter", "unit": "{renewal}", "labels": ["queue", "activity_type"], "doc": "Claim renewals that failed and will be retried on the next beat." },
     { "name": "activity_yielded", "kind": "counter", "unit": "{attempt}", "labels": ["queue", "activity_type"], "doc": "Attempts that parked the activity for a durable wait (sleep, signal or awaited result)." },
     { "name": "activity_trees_swept", "kind": "counter", "unit": "{tree}", "labels": ["queue"], "doc": "Terminal workflow trees deleted by retention." },
+    { "name": "schedule_fires", "kind": "counter", "unit": "{activity}", "labels": ["queue"], "doc": "Activities enqueued by firing due schedules." },
     { "name": "storage_retry", "kind": "counter", "unit": "{retry}", "labels": ["queue", "activity_type"], "doc": "Storage writes made for an attempt (completion, failure, park, checkpoint, spawn) that failed transiently and are being retried." },
     { "name": "activity_claim_lag", "kind": "histogram", "unit": "s", "labels": ["queue", "activity_type"], "doc": "How long an activity waited from when it was due until a worker started it." },
     { "name": "activity_execution", "kind": "histogram", "unit": "s", "labels": ["queue", "activity_type"], "doc": "How long an attempt took on this worker, from its start until its outcome was recorded." },
