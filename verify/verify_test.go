@@ -625,3 +625,42 @@ func ecmaNumber(f float64) string {
 	}
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
+
+func validTraceparent(s string) bool {
+	hex := func(f string, n int) bool {
+		if len(f) != n {
+			return false
+		}
+		for _, c := range f {
+			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+				return false
+			}
+		}
+		return true
+	}
+	if len(s) < 55 || (len(s) > 55 && (s[:2] == "00" || s[55] != '-')) {
+		return false
+	}
+	f := strings.Split(s[:55], "-")
+	return len(f) == 4 && hex(f[0], 2) && f[0] != "ff" &&
+		hex(f[1], 32) && f[1] != strings.Repeat("0", 32) &&
+		hex(f[2], 16) && f[2] != strings.Repeat("0", 16) && hex(f[3], 2)
+}
+
+func TestTraceparent(t *testing.T) {
+	check(t, "vectors/traceparent.json", func(in struct {
+		Explicit  *string `json:"explicit"`
+		Active    *string `json:"active"`
+		Inherited *string `json:"inherited"`
+	}) (any, error) {
+		if in.Explicit != nil {
+			return *in.Explicit, nil
+		}
+		for _, tp := range []*string{in.Active, in.Inherited} {
+			if tp != nil && validTraceparent(*tp) {
+				return *tp, nil
+			}
+		}
+		return nil, nil
+	})
+}

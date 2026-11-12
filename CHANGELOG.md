@@ -18,6 +18,17 @@
   ledger whichever SDK sent it. Conformance drivers compute it when a
   `command` gives no `fingerprint`; a mixed scenario repeats Go's commands
   from TypeScript and back.
+- Observability: `observability/metrics.json` names every metric both SDKs
+  emit (kind, unit, labels `queue`, `activity_type`, `status`), including new
+  gauges `queue_depth`, `queue_oldest_pending_age` and `activities_in_flight`
+  and the `activity_execution` histogram. `observability/tracing.json` names
+  the spans (`runnerq.enqueue`, `runnerq.attempt`, `runnerq.step`,
+  `runnerq.sleep`, `runnerq.signal.wait`, `runnerq.signal.send`), their
+  attributes and outcomes, and the `traceparent` metadata key.
+- Vectors: `traceparent.json`, which traceparent an enqueue stores: the
+  caller's, else the enqueue span's, else the enqueueing parent's.
+- Generator: `-part observability` writes those names as Go or TypeScript.
+- Conformance: `mixed/traceparent-in-metadata`.
 
 ## 0.9.0
 
