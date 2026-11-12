@@ -110,3 +110,28 @@ func TestGenerateConductor(t *testing.T) {
 		t.Error("TypeScript lacks the message map or enum values")
 	}
 }
+
+func TestGenerateObservability(t *testing.T) {
+	o, err := loadObservability("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	goSrc, err := goObservability(o, "runnerq")
+	if err != nil {
+		t.Fatalf("Go output does not format: %v", err)
+	}
+	tsSrc, err := tsObservability(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`MetricActivityStarted = "activity_started"`, `{Name: MetricQueueDepth, Kind: MetricGauge, Unit: "{activity}", Labels: []string{LabelQueue, LabelActivityType, LabelStatus}`, `const MetadataTraceparent = "traceparent"`, `SpanAttempt = "runnerq.attempt"`, `AttrActivityID = "runnerq.activity.id"`, `OutcomeDeadLetter = "dead_letter"`} {
+		if !strings.Contains(string(goSrc), want) {
+			t.Errorf("Go output lacks %q", want)
+		}
+	}
+	for _, want := range []string{`activityStarted: "activity_started",`, `export const traceparentKey = "traceparent";`, `signalWait: "runnerq.signal.wait",`, `deadLetter: "dead_letter",`} {
+		if !strings.Contains(string(tsSrc), want) {
+			t.Errorf("TypeScript output lacks %q", want)
+		}
+	}
+}
