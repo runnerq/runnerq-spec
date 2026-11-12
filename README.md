@@ -40,6 +40,8 @@ runnerq-spec/
 ├── constants/
 │   └── constants.json          lock key, channel and key prefixes,
 │                               serialization ids, storage error kinds
+├── observability/              metric names, kinds and labels; span names
+│                               and attributes; the traceparent rule
 ├── vectors/                    golden inputs → outputs for pure logic
 │   ├── checkpoint_id.json
 │   ├── business_key.json
@@ -47,11 +49,16 @@ runnerq-spec/
 │   ├── step_key.json
 │   ├── attempts_remain.json    retry decision
 │   ├── retry_delay.json        backoff
+│   ├── traceparent.json        trace context stored at enqueue
 │   ├── canonical_status.json
 │   ├── canonical_event.json
 │   ├── internal_events.json
+│   ├── command_fingerprint.json  management command identity
 │   ├── index_definition.json   catalog normalization
-│   └── column_default.json
+│   ├── column_default.json
+│   ├── cron_next_fire.json     cron fire times, across daylight saving
+│   └── schedule_fire.json      what firing a due schedule enqueues
+├── schedules.md                cron schedules: dialect, firing, catch-up
 ├── schema/
 │   └── postgres/               migrations, concurrent indexes, catalog
 │                               (see its README)
@@ -71,7 +78,10 @@ runnerq-spec/
 └── tools/
     ├── gen/                    constants, schema and protocols → Go / TypeScript
     ├── catalog/                schema → catalog.json, from a real Postgres
-    └── conformance/            runs the scenarios against SDK drivers
+    ├── conformance/            runs the scenarios against SDK drivers
+    └── chaos/                  kills workers and restarts Postgres under a
+                                seeded workload, then checks invariants
+                                (see its README)
 ```
 
 Later phases add these directories:
@@ -108,6 +118,8 @@ go run ./tools/gen -lang go -pkg spec -out <file.go>                # constants
 go run ./tools/gen -lang ts -out <file.ts>
 go run ./tools/gen -lang go -pkg spec -part schema -out <file.go>   # Postgres schema
 go run ./tools/gen -lang ts -part schema -out <file.ts>
+go run ./tools/gen -lang go -pkg <pkg> -part observability -out <file.go>   # metric and span names
+go run ./tools/gen -lang ts -part observability -out <file.ts>
 go run ./tools/gen -part storage -lang go-protocol|go-client|go-server|ts -pkg <pkg> -out <file>
 go run ./tools/gen -part conductor -lang go|ts|ts-specs -pkg <pkg> -out <file>
 go run ./tools/gen -part executor-report -lang go|ts -pkg <pkg> -out <file>

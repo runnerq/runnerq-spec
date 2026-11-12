@@ -420,6 +420,105 @@
       "primary_key": [
         "activity_id"
       ]
+    },
+    {
+      "name": "runnerq_schedules",
+      "columns": [
+        {
+          "name": "activity_type",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "catch_up",
+          "type": "text",
+          "nullable": false,
+          "default": "'one'::text"
+        },
+        {
+          "name": "catch_up_limit",
+          "type": "int4",
+          "nullable": false,
+          "default": "100"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "cron",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "last_fire_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "next_fire_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "options",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "paused",
+          "type": "bool",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'null'::jsonb"
+        },
+        {
+          "name": "queue_name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "serialization",
+          "type": "text",
+          "nullable": false,
+          "default": "'json-v1'::text"
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "nullable": false,
+          "default": "'UTC'::text"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "queue_name",
+        "name"
+      ]
     }
   ],
   "indexes": [
@@ -487,6 +586,11 @@
       "name": "idx_runnerq_root_terminal",
       "table": "runnerq_activities",
       "definition": "CREATE INDEX idx_runnerq_root_terminal ON runnerq_activities USING btree (queue_name, status, completed_at) WHERE ((parent_activity_id IS NULL) AND (status = ANY (ARRAY['completed'::text, 'failed'::text, 'dead_letter'::text, 'cancelled'::text])))"
+    },
+    {
+      "name": "idx_runnerq_schedules_due",
+      "table": "runnerq_schedules",
+      "definition": "CREATE INDEX idx_runnerq_schedules_due ON runnerq_schedules USING btree (queue_name, next_fire_at) WHERE (NOT paused)"
     }
   ],
   "retired": {

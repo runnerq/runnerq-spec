@@ -1,0 +1,34 @@
+{
+  "description": "catch_up skip: ticks missed by more than the grace fire nothing, and next_fire_at moves past now.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 0 1 1 *",
+      "type": "t",
+      "catch_up": "skip"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "year",
+      "back": "5 years"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$null": true
+        }
+      }
+    }
+  ]
+}

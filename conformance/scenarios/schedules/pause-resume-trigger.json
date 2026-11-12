@@ -1,0 +1,88 @@
+{
+  "description": "A paused schedule fires nothing; trigger enqueues one run even while paused; resume moves next_fire_at past now without catching up the ticks missed while paused.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 * * * *",
+      "type": "t"
+    },
+    {
+      "op": "pause_schedule",
+      "name": "s"
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": true
+      }
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "hour",
+      "back": "3 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "op": "trigger_schedule",
+      "name": "s",
+      "as": "run"
+    },
+    {
+      "expect_row": {
+        "activity": "run",
+        "status": "pending",
+        "activity_type": "t",
+        "parent_activity_id": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": true,
+        "last_fire_at": {
+          "$null": true
+        },
+        "next_fire_at": {
+          "$trunc": [
+            "hour",
+            "3 hours"
+          ]
+        }
+      }
+    },
+    {
+      "op": "resume_schedule",
+      "name": "s"
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "paused": false,
+        "next_fire_at": {
+          "$future": true
+        }
+      }
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "count": 1
+      }
+    }
+  ]
+}

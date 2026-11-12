@@ -5,6 +5,62 @@
 - The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
   Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
   a newer language feature.
+- `tools/chaos`: a chaos harness. It runs a seeded workload on a fleet of Go,
+  TypeScript or mixed worker processes, kills workers, pauses them past their
+  lease and restarts Postgres. It then checks in SQL that every activity
+  completed, that no recorded step's effect happened twice and that parked work
+  woke exactly once. Its README defines the worker contract. The `Chaos`
+  workflow runs it every 6 hours against both SDKs' main branches.
+- Cron schedules ([schedules.md](schedules.md)). Schema: `runnerq_schedules`
+  (`0003_schedules`) with the due-scan index `idx_runnerq_schedules_due`.
+  The dialect is standard 5-field cron, with an optional leading seconds
+  field and the `@hourly`-style macros, in an IANA time zone; a fixed-hour
+  schedule fires once per day across daylight-saving changes, an any-hour one
+  follows real time. A due schedule is fired in one transaction that enqueues
+  each tick with the key `schedule:<name>:<fire time>` and advances
+  `next_fire_at`. `catch_up` is `skip`, `one` (default) or `all` up to
+  `catch_up_limit` (default 100).
+- Constants: `schedule_key_prefix`, `schedule_catch_up_grace_seconds` (60),
+  `schedule_catch_up_limit_default` (100).
+- Vectors: `cron_next_fire.json` (dialect, month ends, leap days, day-of-month
+  and day-of-week, New York, London, Sydney and Lord Howe daylight-saving
+  changes) and `schedule_fire.json` (catch-up), with a reference
+  implementation in `verify/cron_test.go`.
+- Conformance: 11 schedule scenarios (firing once, a lost advance, atomic
+  enqueue and advance, each catch-up mode, pause, resume, trigger, upsert)
+  and 3 mixed-fleet ones (Go and TypeScript racing a due schedule, each
+  managing the other's schedules, and options stored at upsert so a fire is
+  the same whichever SDK fires it). Driver ops `upsert_schedule`,
+  `pause_schedule`, `resume_schedule`, `trigger_schedule`, `delete_schedule`,
+  `list_schedules` and `fire_schedules`; runner steps `make_schedule_due`,
+  `fail_writes`, `fire_race`, `expect_schedule` and `expect_fires`.
+- Conformance: the `command` driver operation (the storage command API) and
+  13 scenarios under `commands/`: each command (cancel, retry, run now,
+  reschedule, set priority, delete, signal) against an activity in every
+  status, a repeated command id replaying from the ledger and the same id
+  with other input conflicting, a dry run, a filter target, resetting
+  attempts, cascading cancels, a cancel waking an awaiting parent, a cancel
+  revoking a running activity's claim, and malformed commands. A mixed
+  scenario cancels a claim one SDK holds from the other and replays a command
+  id across them. The runner gains the `each_status` step, `ids` and
+  `at_in_s` arguments and an `items` expectation.
+- `vectors/command_fingerprint.json`: the canonical fingerprint of a
+  management command (canonical JSON of its input, SHA-256), so a command id
+  repeated with the same input replays from the shared `runnerq_commands`
+  ledger whichever SDK sent it. Conformance drivers compute it when a
+  `command` gives no `fingerprint`; a mixed scenario repeats Go's commands
+  from TypeScript and back.
+- Observability: `observability/metrics.json` names every metric both SDKs
+  emit (kind, unit, labels `queue`, `activity_type`, `status`), including new
+  gauges `queue_depth`, `queue_oldest_pending_age` and `activities_in_flight`
+  and the `activity_execution` histogram. `observability/tracing.json` names
+  the spans (`runnerq.enqueue`, `runnerq.attempt`, `runnerq.step`,
+  `runnerq.sleep`, `runnerq.signal.wait`, `runnerq.signal.send`), their
+  attributes and outcomes, and the `traceparent` metadata key.
+- Vectors: `traceparent.json`, which traceparent an enqueue stores: the
+  caller's, else the enqueue span's, else the enqueueing parent's.
+- Generator: `-part observability` writes those names as Go or TypeScript.
+- Conformance: `mixed/traceparent-in-metadata`.
 
 ## 0.9.0
 

@@ -1,0 +1,46 @@
+{
+  "description": "catch_up one (the default): after missed ticks, the latest due tick fires once.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "s",
+      "cron": "0 0 1 1 *",
+      "type": "t"
+    },
+    {
+      "make_schedule_due": "s",
+      "trunc": "year",
+      "back": "5 years"
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 1
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "s",
+        "type": "t",
+        "trunc": "year",
+        "ago": [
+          "0 years"
+        ]
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "s",
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$trunc": [
+            "year",
+            "0 years"
+          ]
+        }
+      }
+    }
+  ]
+}

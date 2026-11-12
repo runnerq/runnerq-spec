@@ -1,0 +1,122 @@
+{
+  "description": "An upserted schedule is unpaused with its next fire time ahead and nothing fired; list names the queue's schedules; delete removes one, and pause, resume, trigger and delete of an unknown name are not found.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "a",
+      "cron": "0 * * * *",
+      "type": "t"
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "b",
+      "cron": "*/5 * * * *",
+      "type": "t"
+    },
+    {
+      "op": "list_schedules",
+      "expect": {
+        "names": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "a",
+        "cron": "0 * * * *",
+        "timezone": "UTC",
+        "activity_type": "t",
+        "catch_up": "one",
+        "catch_up_limit": 100,
+        "paused": false,
+        "next_fire_at": {
+          "$future": true
+        },
+        "last_fire_at": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "op": "fire_schedules",
+      "expect": {
+        "count": 0
+      }
+    },
+    {
+      "op": "delete_schedule",
+      "name": "b"
+    },
+    {
+      "op": "list_schedules",
+      "expect": {
+        "names": [
+          "a"
+        ]
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "b",
+        "absent": true
+      }
+    },
+    {
+      "op": "delete_schedule",
+      "name": "b",
+      "expect": {
+        "error": "not_found"
+      }
+    },
+    {
+      "op": "pause_schedule",
+      "name": "b",
+      "expect": {
+        "error": "not_found"
+      }
+    },
+    {
+      "op": "resume_schedule",
+      "name": "b",
+      "expect": {
+        "error": "not_found"
+      }
+    },
+    {
+      "op": "trigger_schedule",
+      "name": "b",
+      "expect": {
+        "error": "not_found"
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "bad",
+      "cron": "61 * * * *",
+      "type": "t",
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "bad",
+      "cron": "0 * * * *",
+      "timezone": "Mars/Olympus_Mons",
+      "type": "t",
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "list_schedules",
+      "expect": {
+        "names": [
+          "a"
+        ]
+      }
+    }
+  ]
+}

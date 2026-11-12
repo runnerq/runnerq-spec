@@ -1,0 +1,174 @@
+{
+  "description": "A schedule upserted by one SDK fires from the other with the same payload and options, and each pauses, resumes, triggers and deletes the other's schedules.",
+  "steps": [
+    {
+      "op": "upsert_schedule",
+      "name": "ts",
+      "cron": "0 * * * *",
+      "type": "tt",
+      "payload": {
+        "from": "ts"
+      },
+      "priority": 4,
+      "max_attempts": 2,
+      "timeout_s": 45,
+      "metadata": {
+        "by": "ts"
+      },
+      "by": "ts"
+    },
+    {
+      "op": "upsert_schedule",
+      "name": "go",
+      "cron": "0 * * * *",
+      "type": "tg",
+      "payload": {
+        "from": "go"
+      },
+      "priority": 1,
+      "max_attempts": 7,
+      "timeout_s": 90,
+      "metadata": {
+        "by": "go"
+      },
+      "by": "go"
+    },
+    {
+      "make_schedule_due": "ts",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "make_schedule_due": "go",
+      "trunc": "hour",
+      "back": "0 hours"
+    },
+    {
+      "op": "fire_schedules",
+      "by": "go",
+      "expect": {
+        "count": 2
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "ts",
+        "type": "tt",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ],
+        "payload": {
+          "from": "ts"
+        },
+        "row": {
+          "priority": 4,
+          "max_retries": 2,
+          "timeout_seconds": 45,
+          "metadata": {
+            "by": "ts"
+          }
+        }
+      }
+    },
+    {
+      "expect_fires": {
+        "schedule": "go",
+        "type": "tg",
+        "trunc": "hour",
+        "ago": [
+          "0 hours"
+        ],
+        "payload": {
+          "from": "go"
+        },
+        "row": {
+          "priority": 1,
+          "max_retries": 7,
+          "timeout_seconds": 90,
+          "metadata": {
+            "by": "go"
+          }
+        }
+      }
+    },
+    {
+      "op": "pause_schedule",
+      "name": "go",
+      "by": "ts"
+    },
+    {
+      "op": "pause_schedule",
+      "name": "ts",
+      "by": "go"
+    },
+    {
+      "op": "list_schedules",
+      "by": "go",
+      "expect": {
+        "names": [
+          "go",
+          "ts"
+        ]
+      }
+    },
+    {
+      "op": "list_schedules",
+      "by": "ts",
+      "expect": {
+        "names": [
+          "go",
+          "ts"
+        ]
+      }
+    },
+    {
+      "expect_schedule": {
+        "name": "go",
+        "paused": true
+      }
+    },
+    {
+      "op": "resume_schedule",
+      "name": "go",
+      "by": "ts"
+    },
+    {
+      "expect_schedule": {
+        "name": "go",
+        "paused": false
+      }
+    },
+    {
+      "op": "trigger_schedule",
+      "name": "ts",
+      "by": "go",
+      "as": "run"
+    },
+    {
+      "expect_row": {
+        "activity": "run",
+        "activity_type": "tt",
+        "priority": 4,
+        "max_retries": 2
+      }
+    },
+    {
+      "op": "delete_schedule",
+      "name": "ts",
+      "by": "go"
+    },
+    {
+      "op": "delete_schedule",
+      "name": "go",
+      "by": "ts"
+    },
+    {
+      "op": "list_schedules",
+      "by": "ts",
+      "expect": {
+        "names": []
+      }
+    }
+  ]
+}

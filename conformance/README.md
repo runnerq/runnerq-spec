@@ -52,9 +52,23 @@ fresh queue; ids are UUIDs the runner chooses.
 | `reap` | `limit` | `{"count": n}` |
 | `cleanup` | `completed_s`, `failed_s`, `events_s` (0 off), `batch` | `{"count": n}`, the roots deleted |
 | `get_result` | `id` | `{"result": null \| {"state", "data", "serialization"}}` |
+| `upsert_schedule` | `name`, `cron`, `timezone` (default `UTC`), `type`, `payload`, `priority`, `max_attempts`, `timeout_s`, `metadata`, `catch_up` (default `one`), `catch_up_limit` (default 100) | `{}` |
+| `pause_schedule`, `resume_schedule`, `delete_schedule` | `name` | `{}` |
+| `trigger_schedule` | `name` | `{"id": id}`, the activity enqueued |
+| `list_schedules` | | `{"names": [...]}`, sorted |
+| `fire_schedules` | | `{"count": n}`, the activities enqueued; fires the queue's due schedules ([schedules.md](../schedules.md)) |
+| `command` | `kind` (`cancel`, `retry`, `run_now`, `reschedule`, `set_priority`, `delete`, `signal`), `command_id`, `fingerprint`, a target (`ids`, or `filter` and `max`), `dry_run`, `reason`, `cascade`, `reset_attempts`, `at`, `priority`, `name`, `payload` (signal) | `{"matched", "applied", "cascaded", "more", "replayed", "items": [{"id", "outcome", "status", "error"}]}` |
 
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
-between requests. Values (`payload`, `value`, `data`) are plain JSON
+between requests. A `command` is the storage command API (`ApplyCommand` in
+Go, `applyCommand` in TypeScript) with the arguments as given: `command_id`
+absent or empty disables the ledger, `fingerprint` absent means the driver
+computes it from the other arguments (`vectors/command_fingerprint.json`, as
+the SDK clients do), `cascade` and `reset_attempts` default to false, and `filter` is a query filter (`{"field", "op", "value"}`, `and`,
+`or`, `not`). In its reply, an item's `outcome` is `applied`, `skipped` or
+`would_apply`; `status` is the canonical status after the command (absent once
+deleted); `error` is `not_found` or `conflict` for a skipped item, else absent.
+Values (`payload`, `value`, `data`) are plain JSON
 (`json-v1`). Absent args take these defaults: `priority` 2, `max_attempts` 3,
 `timeout_s` 30, `delay_s` 0, `limit` 1, `lease_ms` 30000. The retry delay base
 is 1 second. A signal's result id is `checkpoint_id(target, "signal", name)`.
@@ -75,28 +89,50 @@ is 1 second. A signal's result id is `checkpoint_id(target, "signal", name)`.
 A step is one of:
 
 - **An operation** (`op`, with its args inline). `as` names what it creates:
-  the id for `submit`, the claims for `claim`. Arguments refer to names:
-  activity ids by name, claims by name. `by` picks the driver when there are
-  several (`go`, `ts`; default the first). `expect` checks the reply:
-  `{"error": kind}`, `{"claims": [names]}` (in order), or any reply field
-  (`outcome`, `count`, `renewed`, `existing`, `result`).
+  the id for `submit` and `trigger_schedule`, the claims for `claim`.
+  Arguments refer to names: activity ids by name, claims by name; `ids` is a
+  list of names. `wake_in_s` and `at_in_s` become `wake_at` and `at`, that
+  many seconds from now. `by` picks the driver when there are several (`go`,
+  `ts`; default the first). `expect` checks the reply: `{"error": kind}`
+  (`"any"` for any kind), `{"claims": [names]}` (in order),
+  `{"items": {name: {field: value}}}` (a command's items, one per name and no
+  others), or any other reply field (`outcome`, `count`, `renewed`,
+  `existing`, `result`, `applied`, `replayed`, ...).
 - **A fixture** the runner applies in SQL:
   - `{"expire_lease": name}` puts the lease 10 seconds in the past.
   - `{"make_due": name}` sets `scheduled_at` to now.
   - `{"backdate": name, "column": "completed_at", "seconds": n}`.
   - `{"backdate_events": name, "seconds": n}` ages the activity's events.
   - `{"sleep_ms": n}`.
+  - `{"make_schedule_due": name, "trunc": unit, "back": interval}` sets the
+    schedule's `next_fire_at` to `date_trunc(unit, now in UTC) - interval`.
+  - `{"fail_writes": table, "on": bool}` makes every insert and update of
+    the table in the scenario's queue raise an error, or stops it.
 - **A bulk step** the runner performs through drivers:
   - `{"submit_many": {"prefix", "n", "type", "by"}}` submits `n` activities
     named `<prefix>0` to `<prefix>n-1`.
+  - `{"each_status": {"prefix", "by"}}` puts one activity in every stored
+    status: `<prefix>pending`, `scheduled` (delayed an hour), `retrying`,
+    `running` (claimed, as claim `<prefix>running`), `waiting` (parked on a
+    sleep for an hour), `completed`, `failed`, `dead_letter` and `cancelled`,
+    each of its own type, its name.
   - `{"drain": {"types", "by": [drivers], "limit", "prefix", "n"}}` claims
     from every listed driver at once until the queue is empty, and checks
     each of the `n` activities was claimed exactly once.
+  - `{"fire_race": {"by": [drivers], "rounds": n}}` has every listed driver
+    call `fire_schedules` `n` times, all at once.
 - **An expectation** the runner checks in SQL:
   - `expect_row`: `runnerq_activities` columns of an activity.
   - `expect_events`: the activity's `runnerq_events` types, in insertion order.
   - `expect_result`: a `runnerq_results` row.
   - `expect_absent`: the activity and everything it owns are gone.
+  - `expect_schedule`: `runnerq_schedules` columns of a schedule (`name`),
+    or `"absent": true`.
+  - `expect_fires`: `{"schedule", "type", "count", "trunc", "ago", "row",
+    "payload"}`. Every activity of the type in the queue has the key
+    `schedule:<schedule>:<fire time>`, no fire time twice; there are `count`
+    of them, or exactly the fire times `date_trunc(trunc, now) - ago[i]`; each
+    has the `runnerq_activities` columns in `row` and the input `payload`.
 
 After the last step the runner also checks every event the scenario wrote
 against `schema/postgres/events.schema.json`, and that an event ending an
@@ -104,5 +140,7 @@ attempt names its worker.
 
 Expected values are JSON, or matchers: `{"$id": name}`, `{"$token": claim}`,
 `{"$null": true}`, `{"$notnull": true}`, `{"$future": true}`,
-`{"$past": true}`, `{"$checkpoint": [name, kind, step]}` (a checkpoint id).
+`{"$past": true}`, `{"$checkpoint": [name, kind, step]}` (a checkpoint id),
+`{"$trunc": [unit, interval]}` (the time `date_trunc(unit, now in UTC) -
+interval`).
 SQL NULL and JSON null are the same.

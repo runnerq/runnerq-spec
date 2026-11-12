@@ -1,0 +1,87 @@
+{
+  "description": "A filter target selects only activities the command can act on, oldest first, up to max, and says when more matched; repeating it makes progress.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "filter": {
+        "field": "type",
+        "op": "prefix",
+        "value": "s_"
+      },
+      "max": 2,
+      "expect": {
+        "matched": 2,
+        "applied": 2,
+        "more": true,
+        "items": {
+          "s_failed": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "s_dead_letter": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "filter": {
+        "field": "type",
+        "op": "prefix",
+        "value": "s_"
+      },
+      "max": 2,
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "more": false,
+        "items": {
+          "s_cancelled": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "retry",
+      "filter": {
+        "field": "type",
+        "op": "prefix",
+        "value": "s_"
+      },
+      "max": 2,
+      "expect": {
+        "matched": 0,
+        "applied": 0,
+        "more": false,
+        "items": {}
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_dead_letter",
+        "status": "pending"
+      }
+    }
+  ]
+}

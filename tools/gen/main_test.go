@@ -61,11 +61,11 @@ func TestGenerateStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, gen := range []func(*protocolDoc, string, string) ([]byte, error){goProtocol, goClient, goServer} {
-		if _, err := gen(p, "x", "github.com/alob-mtc/runnerq-go/storage"); err != nil {
+		if _, err := gen(p, "x", "github.com/runnerq/runnerq-go/storage"); err != nil {
 			t.Fatalf("Go output does not format: %v", err)
 		}
 	}
-	src, _ := goServer(p, "rpc", "github.com/alob-mtc/runnerq-go/storage")
+	src, _ := goServer(p, "rpc", "github.com/runnerq/runnerq-go/storage")
 	for _, want := range []string{"len(a.WorkerID) < 1 || len(a.WorkerID) > 512", "min(a.Timeout, time.Duration(25000000000))", "func validateQueuedActivity(v *storage.QueuedActivity) error", "v.ID == uuid.Nil"} {
 		if !strings.Contains(string(src), want) {
 			t.Errorf("server lacks %q", want)
@@ -108,5 +108,30 @@ func TestGenerateConductor(t *testing.T) {
 	ts, _ := tsProtocol(p, "conductor")
 	if !strings.Contains(string(ts), `"activities.list": {`) || !strings.Contains(string(ts), "export const activityStatusValues") || !strings.Contains(string(ts), "export type MessageType = keyof Messages;") {
 		t.Error("TypeScript lacks the message map or enum values")
+	}
+}
+
+func TestGenerateObservability(t *testing.T) {
+	o, err := loadObservability("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	goSrc, err := goObservability(o, "runnerq")
+	if err != nil {
+		t.Fatalf("Go output does not format: %v", err)
+	}
+	tsSrc, err := tsObservability(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`MetricActivityStarted = "activity_started"`, `{Name: MetricQueueDepth, Kind: MetricGauge, Unit: "{activity}", Labels: []string{LabelQueue, LabelActivityType, LabelStatus}`, `const MetadataTraceparent = "traceparent"`, `SpanAttempt = "runnerq.attempt"`, `AttrActivityID = "runnerq.activity.id"`, `OutcomeDeadLetter = "dead_letter"`} {
+		if !strings.Contains(string(goSrc), want) {
+			t.Errorf("Go output lacks %q", want)
+		}
+	}
+	for _, want := range []string{`activityStarted: "activity_started",`, `export const traceparentKey = "traceparent";`, `signalWait: "runnerq.signal.wait",`, `deadLetter: "dead_letter",`} {
+		if !strings.Contains(string(tsSrc), want) {
+			t.Errorf("TypeScript output lacks %q", want)
+		}
 	}
 }
