@@ -8,6 +8,17 @@
   completed, that no recorded step's effect happened twice and that parked work
   woke exactly once. Its README defines the worker contract. The `Chaos`
   workflow runs it every 6 hours against both SDKs' main branches.
+- Observability: `observability/metrics.json` names every metric both SDKs
+  emit (kind, unit, labels `queue`, `activity_type`, `status`), including new
+  gauges `queue_depth`, `queue_oldest_pending_age` and `activities_in_flight`
+  and the `activity_execution` histogram. `observability/tracing.json` names
+  the spans (`runnerq.enqueue`, `runnerq.attempt`, `runnerq.step`,
+  `runnerq.sleep`, `runnerq.signal.wait`, `runnerq.signal.send`), their
+  attributes and outcomes, and the `traceparent` metadata key.
+- Vectors: `traceparent.json`, which traceparent an enqueue stores: the
+  caller's, else the enqueue span's, else the enqueueing parent's.
+- Generator: `-part observability` writes those names as Go or TypeScript.
+- Conformance: `mixed/traceparent-in-metadata`.
 
 ## 0.9.0
 

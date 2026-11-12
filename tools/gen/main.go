@@ -1,5 +1,6 @@
-// Command gen writes the spec's constants, or its Postgres schema
-// (-part schema), as Go or TypeScript source.
+// Command gen writes the spec's constants, its Postgres schema (-part
+// schema) or its metric and span names (-part observability), as Go or
+// TypeScript source.
 //
 //	go run ./tools/gen -lang go -pkg spec -out ../internal/spec/spec.go
 //	go run ./tools/gen -lang go -pkg spec -part schema -out ../internal/spec/schema.go
@@ -48,9 +49,9 @@ func main() {
 	lang := flag.String("lang", "", "go or ts")
 	pkg := flag.String("pkg", "spec", "Go package name")
 	out := flag.String("out", "", "output file")
-	part := flag.String("part", "constants", "constants, schema, storage, conductor or executor-report")
+	part := flag.String("part", "constants", "constants, schema, observability, storage, conductor or executor-report")
 	specImport := flag.String("spec-import", "./decode.js", "TypeScript module exporting Spec (-lang ts-specs)")
-	storageImport := flag.String("storage-import", "github.com/alob-mtc/runnerq-go/storage", "Go import path of runnerq-go's storage package")
+	storageImport := flag.String("storage-import", "github.com/runnerq/runnerq-go/storage", "Go import path of runnerq-go's storage package")
 	flag.Parse()
 	if *out == "" {
 		fail(fmt.Errorf("-out is required"))
@@ -98,6 +99,18 @@ func main() {
 				err = fmt.Errorf("-lang must be go-protocol, go-client, go-server or ts")
 			}
 		}
+	case "observability":
+		var o *observability
+		if o, err = loadObservability(*root); err == nil {
+			switch *lang {
+			case "go":
+				src, err = goObservability(o, *pkg)
+			case "ts":
+				src, err = tsObservability(o)
+			default:
+				err = fmt.Errorf("-lang must be go or ts")
+			}
+		}
 	case "conductor", "executor-report":
 		// A hosted worker's report is the conductor protocol's ExecutorReport.
 		var p *protocolDoc
@@ -120,7 +133,7 @@ func main() {
 			}
 		}
 	default:
-		err = fmt.Errorf("-part must be constants, schema, storage, conductor or executor-report")
+		err = fmt.Errorf("-part must be constants, schema, observability, storage, conductor or executor-report")
 	}
 	if err != nil {
 		fail(err)
