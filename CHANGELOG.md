@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `tools/chaos`: a chaos harness. It runs a seeded workload on a fleet of Go,
+  TypeScript or mixed worker processes, kills workers, pauses them past their
+  lease and restarts Postgres. It then checks in SQL that every activity
+  completed, that no recorded step's effect happened twice and that parked work
+  woke exactly once. Its README defines the worker contract. The `Chaos`
+  workflow runs it every 6 hours against both SDKs' main branches.
+
 ## 0.9.0
 
 - Schema: `runnerq_worker_pools` is gone (`0002_drop_worker_pools`). It held a
