@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- Concurrency and rate limits per activity type ([limits.md](limits.md)).
+  Schema: `runnerq_limits` (`0005_limits`), one row per limited type of a
+  queue with `max_concurrent`, a token-bucket rate (`rate_tokens` per
+  `rate_per_seconds`) and the bucket's `tokens` and `refilled_at`; the
+  concurrent index `idx_runnerq_processing_v2` (`queue_name, activity_type`
+  where processing) replaces `idx_runnerq_processing`, so a limited claim
+  counts a type's running activities from it. A claim of limited types locks
+  their rows, counts in a later statement and claims up to the allowance in
+  one transaction; claims of unlimited types are unchanged. Waiting and
+  retrying activities don't count; lowering a limit preempts nothing.
+- Constants: `limits_refresh_ms` (1000), how stale a worker's set of limited
+  types may be, and `limit_probe_ms` (200), how soon it claims again after a
+  limit held work back.
+- Conformance: driver ops `set_limit`, `get_limit`, `delete_limit` and
+  `list_limits`; runner steps `backdate_limit` (rate refill on the database
+  clock), `expect_limit` and `limit_race` (drivers claim and complete at once
+  while the runner samples the running count); 9 scenarios under `limits/`
+  and 2 mixed-fleet ones (Go and TypeScript racing a limit of 3, and a limit
+  set by one SDK binding the other).
+- `tools/chaos`: about half the activities that never park are of type
+  `<prefix>.limited`, which workers declare with `max_concurrent` 2
+  (`RUNNERQ_CHAOS_LIMIT`); the harness samples its running count throughout
+  the run and fails if it ever exceeds the limit.
+
 - The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
   Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
   a newer language feature.
