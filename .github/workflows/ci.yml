@@ -68,6 +68,9 @@ jobs:
       - name: Conformance runner builds
         working-directory: tools/conformance
         run: go vet . && go build -o /dev/null .
+      - name: Chaos harness builds and passes its tests
+        working-directory: tools/chaos
+        run: test -z "$(gofmt -l .)" && go vet . && go test . && go build -o /dev/null .
 
   conformance:
     # The scenarios against both SDKs' main branches: each alone, then both

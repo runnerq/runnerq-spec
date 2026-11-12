@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `tools/chaos`: a chaos harness. It runs a seeded workload on a fleet of Go,
+  TypeScript or mixed worker processes, kills workers, pauses them past their
+  lease and restarts Postgres. It then checks in SQL that every activity
+  completed, that no recorded step's effect happened twice and that parked work
+  woke exactly once. Its README defines the worker contract. The `Chaos`
+  workflow runs it every 6 hours against both SDKs' main branches.
 - Cron schedules ([schedules.md](schedules.md)). Schema: `runnerq_schedules`
   (`0003_schedules`) with the due-scan index `idx_runnerq_schedules_due`.
   The dialect is standard 5-field cron, with an optional leading seconds

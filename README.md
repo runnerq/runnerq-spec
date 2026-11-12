@@ -78,7 +78,10 @@ runnerq-spec/
 └── tools/
     ├── gen/                    constants, schema and protocols → Go / TypeScript
     ├── catalog/                schema → catalog.json, from a real Postgres
-    └── conformance/            runs the scenarios against SDK drivers
+    ├── conformance/            runs the scenarios against SDK drivers
+    └── chaos/                  kills workers and restarts Postgres under a
+                                seeded workload, then checks invariants
+                                (see its README)
 ```
 
 Later phases add these directories:
