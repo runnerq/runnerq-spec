@@ -65,6 +65,18 @@
       "type": "int",
       "value": "100",
       "doc": "How many due ticks catch_up 'all' fires at once when a schedule sets none: runnerq_schedules.catch_up_limit's default (schedules.md)."
+    },
+    {
+      "name": "limits_refresh_ms",
+      "type": "int",
+      "value": "1000",
+      "doc": "How stale a worker's knowledge of which activity types of its queue have a limit may be: a limit added to an unlimited type binds every worker within this many milliseconds (limits.md). Changes to an existing limit, and its removal, bind the next claim."
+    },
+    {
+      "name": "limit_probe_ms",
+      "type": "int",
+      "value": "200",
+      "doc": "How soon a worker claims again after a limit held back work that was otherwise claimable, instead of waiting for a work notice: a slot freed elsewhere or a refilled rate token announces nothing (limits.md)."
     }
   ],
   "enums": [

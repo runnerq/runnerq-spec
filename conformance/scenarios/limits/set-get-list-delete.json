@@ -1,0 +1,141 @@
+{
+  "description": "set_limit creates or replaces a type's limit, get_limit and list_limits read it back, delete_limit removes it. A rate starts with a full bucket; a limit needs max_concurrent, a rate or both, and a rate needs both of its parts.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "b",
+      "max_concurrent": 3
+    },
+    {
+      "op": "set_limit",
+      "type": "a",
+      "rate_tokens": 5,
+      "rate_per_s": 2
+    },
+    {
+      "op": "list_limits",
+      "expect": {
+        "types": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "op": "get_limit",
+      "type": "a",
+      "expect": {
+        "limit": {
+          "max_concurrent": null,
+          "rate_tokens": 5,
+          "rate_per_s": 2
+        }
+      }
+    },
+    {
+      "expect_limit": {
+        "type": "a",
+        "max_concurrent": {
+          "$null": true
+        },
+        "rate_tokens": 5,
+        "rate_per_seconds": 2,
+        "tokens": 5
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "b",
+      "max_concurrent": 1,
+      "rate_tokens": 10,
+      "rate_per_s": 60
+    },
+    {
+      "op": "get_limit",
+      "type": "b",
+      "expect": {
+        "limit": {
+          "max_concurrent": 1,
+          "rate_tokens": 10,
+          "rate_per_s": 60
+        }
+      }
+    },
+    {
+      "expect_limit": {
+        "type": "b",
+        "tokens": 10
+      }
+    },
+    {
+      "op": "delete_limit",
+      "type": "b"
+    },
+    {
+      "expect_limit": {
+        "type": "b",
+        "absent": true
+      }
+    },
+    {
+      "op": "get_limit",
+      "type": "b",
+      "expect": {
+        "limit": null
+      }
+    },
+    {
+      "op": "list_limits",
+      "expect": {
+        "types": [
+          "a"
+        ]
+      }
+    },
+    {
+      "op": "delete_limit",
+      "type": "b",
+      "expect": {
+        "error": "not_found"
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "c",
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "c",
+      "max_concurrent": 0,
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "c",
+      "rate_tokens": 5,
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "c",
+      "rate_tokens": 0,
+      "rate_per_s": 1,
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "expect_limit": {
+        "type": "c",
+        "absent": true
+      }
+    }
+  ]
+}

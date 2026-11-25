@@ -1,0 +1,83 @@
+{
+  "description": "A limit holds back only its own type: in a claim of several types the limited one takes its allowance and the others fill the rest of the claim. A type whose name merely starts with the limited one's is not limited.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "x",
+      "max_concurrent": 1
+    },
+    {
+      "op": "submit",
+      "as": "x0",
+      "type": "x"
+    },
+    {
+      "op": "submit",
+      "as": "x1",
+      "type": "x"
+    },
+    {
+      "op": "submit",
+      "as": "x2",
+      "type": "x"
+    },
+    {
+      "op": "submit",
+      "as": "y0",
+      "type": "y"
+    },
+    {
+      "op": "submit",
+      "as": "y1",
+      "type": "y"
+    },
+    {
+      "op": "submit",
+      "as": "y2",
+      "type": "y"
+    },
+    {
+      "op": "submit",
+      "as": "z0",
+      "type": "xx"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "x",
+        "y",
+        "xx"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "x0",
+          "y0",
+          "y1",
+          "y2",
+          "z0"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "x",
+        "y",
+        "xx"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "x1",
+        "status": "pending"
+      }
+    }
+  ]
+}

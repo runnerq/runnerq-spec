@@ -1,0 +1,88 @@
+{
+  "description": "With both a cap and a rate the smaller allowance wins, and a claim the cap holds back spends no tokens.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 2,
+      "rate_tokens": 3,
+      "rate_per_s": 3600
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 5,
+        "type": "t"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c0",
+        "c1"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a0",
+          "a1"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c0",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c2"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a2"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c1",
+      "value": null
+    },
+    {
+      "op": "complete",
+      "claim": "c2",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}
