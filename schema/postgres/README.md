@@ -88,6 +88,10 @@ What the schema can't enforce, every implementation keeps:
 - `runnerq_schedules.next_fire_at` is always a fire time of the row's
   `cron` and `timezone`; firing a schedule enqueues and advances it in one
   transaction ([schedules.md](../../schedules.md)).
+- `runnerq_limits` holds no counter: `max_concurrent` is checked against a
+  count of the type's `processing` rows (`idx_runnerq_processing_v2`), taken
+  while the claim holds the row's lock, so it can't drift. `tokens` and
+  `refilled_at` change only under that lock ([limits.md](../../limits.md)).
 - `runnerq_activities.started_at` is when the current attempt was claimed. A
   retry or requeue clears it, so an event ending an attempt records it
   (`events.schema.json`), with the attempt's claim as `worker_id`.

@@ -58,6 +58,7 @@ runnerq-spec/
 │   ├── column_default.json
 │   ├── cron_next_fire.json     cron fire times, across daylight saving
 │   └── schedule_fire.json      what firing a due schedule enqueues
+├── limits.md                   concurrency and rate limits per activity type
 ├── schedules.md                cron schedules: dialect, firing, catch-up
 ├── schema/
 │   └── postgres/               migrations, concurrent indexes, catalog

@@ -77,6 +77,13 @@ terminal. Then it stops the fleet and checks:
    of clock skew between worker and database), after the `Signaled` event, or
    after the last child completed. A waiter has between 1 and (sends
    attempted) `Signaled` events.
+5. **Limits hold.** About half the activities that never park are of type
+   `<prefix>.limited`, which every worker declares with a fleet-wide
+   `max_concurrent` of 2 ([limits.md](../../limits.md)). From the start of the
+   run until the workload finishes, the harness samples each limited type's
+   running count every 20ms; it must never exceed 2. A killed worker's
+   activities count until their lease expires, so a fault can only lower the
+   number of handlers that run.
 
 ## Worker contract
 
@@ -88,18 +95,22 @@ environment:
 | --- | --- |
 | `RUNNERQ_CHAOS_DSN` | Postgres connection string. |
 | `RUNNERQ_CHAOS_QUEUE` | The queue to use. |
-| `RUNNERQ_CHAOS_PREFIX` | The SDK's name from `-worker`. It serves, enqueues and spawns activity types `<prefix>.flow` (and any `<other>.flow` named in a payload). |
+| `RUNNERQ_CHAOS_PREFIX` | The SDK's name from `-worker`. It serves, enqueues and spawns activity types `<prefix>.flow` and `<prefix>.limited` (and any `<other>.flow` or `<other>.limited` named in a payload). |
 | `RUNNERQ_CHAOS_WORKER` | This incarnation's label, such as `go-1.3`. It is written to every ledger row. |
 | `RUNNERQ_CHAOS_CONCURRENCY` | `work`: activities run at once. |
 | `RUNNERQ_CHAOS_LEASE_MS` | `work`: the claim lease, if the SDK can set it. |
+| `RUNNERQ_CHAOS_LIMIT` | `work`: the `max_concurrent` to declare for `<prefix>.limited`. |
 
 ### `work`
 
-Initialize or check the schema, start a worker serving `<prefix>.flow`, and
-print `{"ready":true}` on stdout once it is claiming. On SIGTERM, shut down
+Initialize or check the schema, start a worker serving `<prefix>.flow` and
+`<prefix>.limited`, and print `{"ready":true}` on stdout once it is claiming.
+`<prefix>.limited` runs the same handler as `<prefix>.flow` and is registered
+with a fleet-wide concurrency limit of `RUNNERQ_CHAOS_LIMIT` (Go
+`MaxConcurrent`, TypeScript `maxConcurrent`). On SIGTERM, shut down
 gracefully and exit 0. Exiting at any other time is a failure. Log to stderr.
 
-The `<prefix>.flow` handler takes this payload (plain JSON):
+The flow handler takes this payload (plain JSON):
 
 ```json
 {

@@ -57,6 +57,10 @@ fresh queue; ids are UUIDs the runner chooses.
 | `trigger_schedule` | `name` | `{"id": id}`, the activity enqueued |
 | `list_schedules` | | `{"names": [...]}`, sorted |
 | `fire_schedules` | | `{"count": n}`, the activities enqueued; fires the queue's due schedules ([schedules.md](../schedules.md)) |
+| `set_limit` | `type`, `max_concurrent`, `rate_tokens`, `rate_per_s` (each absent: none) | `{}`; creates or replaces the type's limit ([limits.md](../limits.md)) |
+| `get_limit` | `type` | `{"limit": null \| {"max_concurrent", "rate_tokens", "rate_per_s"}}`, absent parts null |
+| `delete_limit` | `type` | `{}` |
+| `list_limits` | | `{"types": [...]}`, sorted |
 | `command` | `kind` (`cancel`, `retry`, `run_now`, `reschedule`, `set_priority`, `delete`, `signal`), `command_id`, `fingerprint`, a target (`ids`, or `filter` and `max`), `dry_run`, `reason`, `cascade`, `reset_attempts`, `at`, `priority`, `name`, `payload` (signal) | `{"matched", "applied", "cascaded", "more", "replayed", "items": [{"id", "outcome", "status", "error"}]}` |
 
 A claim is `{"id", "token"}` as the driver returned it; drivers keep no state
@@ -106,6 +110,8 @@ A step is one of:
   - `{"sleep_ms": n}`.
   - `{"make_schedule_due": name, "trunc": unit, "back": interval}` sets the
     schedule's `next_fire_at` to `date_trunc(unit, now in UTC) - interval`.
+  - `{"backdate_limit": type, "seconds": n}` moves the limit's
+    `refilled_at` back, as if that much time had passed for its rate bucket.
   - `{"fail_writes": table, "on": bool}` makes every insert and update of
     the table in the scenario's queue raise an error, or stops it.
 - **A bulk step** the runner performs through drivers:
@@ -121,11 +127,18 @@ A step is one of:
     each of the `n` activities was claimed exactly once.
   - `{"fire_race": {"by": [drivers], "rounds": n}}` has every listed driver
     call `fire_schedules` `n` times, all at once.
+  - `{"limit_race": {"type", "by": [drivers], "limit", "prefix", "n",
+    "max_running"}}` has every listed driver claim the type (up to `limit` at
+    a time) and complete what it claimed, all at once, until the `n`
+    activities have completed, each claimed exactly once. Meanwhile it samples
+    the type's running count and fails if it ever exceeds `max_running`.
 - **An expectation** the runner checks in SQL:
   - `expect_row`: `runnerq_activities` columns of an activity.
   - `expect_events`: the activity's `runnerq_events` types, in insertion order.
   - `expect_result`: a `runnerq_results` row.
   - `expect_absent`: the activity and everything it owns are gone.
+  - `expect_limit`: `runnerq_limits` columns of a limit (`type`), or
+    `"absent": true`.
   - `expect_schedule`: `runnerq_schedules` columns of a schedule (`name`),
     or `"absent": true`.
   - `expect_fires`: `{"schedule", "type", "count", "trunc", "ago", "row",

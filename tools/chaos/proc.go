@@ -45,6 +45,7 @@ func (w *worker) env(label string) []string {
 		"RUNNERQ_CHAOS_WORKER="+label,
 		fmt.Sprintf("RUNNERQ_CHAOS_CONCURRENCY=%d", r.concurrency),
 		fmt.Sprintf("RUNNERQ_CHAOS_LEASE_MS=%d", r.lease.Milliseconds()),
+		fmt.Sprintf("RUNNERQ_CHAOS_LIMIT=%d", limitedMax),
 	)
 }
 

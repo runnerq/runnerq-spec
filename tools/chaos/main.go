@@ -213,6 +213,12 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 	}
 
 	r.start = time.Now()
+	sampling, stopSampling := context.WithCancel(ctx)
+	defer stopSampling()
+	var sampler sync.WaitGroup
+	peaks := map[string]int{}
+	var samples int
+	sampler.Go(func() { samples = r.sampleLimited(sampling, peaks) })
 	var clientErr error
 	var calls, faults sync.WaitGroup
 	calls.Go(func() { clientErr = r.runSchedule(window + settle) })
@@ -235,6 +241,8 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 	if err := r.awaitQuiescence(settle); err != nil {
 		return err
 	}
+	stopSampling()
+	sampler.Wait()
 	for _, w := range r.workers {
 		w.stop(20 * time.Second)
 	}
@@ -247,10 +255,46 @@ func (r *run) main(cmds commands, n, roots int, window time.Duration, faultList 
 		return err
 	}
 	fmt.Print(rep.summary())
+	fmt.Printf("chaos: limited types' peak running count %v over %d samples (limit %d)\n", peaks, samples, limitedMax)
+	for typ, peak := range peaks {
+		if peak > limitedMax {
+			rep.failures = append(rep.failures, fmt.Sprintf("%d activities of %s were running at once, over its limit of %d", peak, typ, limitedMax))
+		}
+	}
 	if len(unexpected) > 0 {
 		rep.failures = append(rep.failures, "workers exited without being killed: "+strings.Join(unexpected, "; "))
 	}
 	return rep.err()
+}
+
+// sampleLimited records the peak running count of each <prefix>.limited type
+// until ctx ends, and returns how many samples it took. A failed sample (a
+// Postgres restart) is skipped.
+func (r *run) sampleLimited(ctx context.Context, peaks map[string]int) int {
+	samples := 0
+	for ctx.Err() == nil {
+		rows, err := r.db.Query(ctx, `SELECT activity_type, count(*) FROM runnerq_activities
+			WHERE queue_name = $1 AND status = 'processing' AND activity_type LIKE '%.limited'
+			GROUP BY activity_type`, r.queue)
+		if err == nil {
+			for rows.Next() {
+				var typ string
+				var n int
+				if rows.Scan(&typ, &n) == nil && n > peaks[typ] {
+					peaks[typ] = n
+				}
+			}
+			rows.Close()
+			if rows.Err() == nil {
+				samples++
+			}
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	return samples
 }
 
 func (r *run) faultSummary() string {

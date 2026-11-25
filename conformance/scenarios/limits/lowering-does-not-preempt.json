@@ -1,0 +1,127 @@
+{
+  "description": "Lowering a limit below the running count stops nothing that is running; the type claims nothing until the count drops below the new limit.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 3
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 4,
+        "type": "t"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c0",
+        "c1",
+        "c2"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a0",
+          "a1",
+          "a2"
+        ]
+      }
+    },
+    {
+      "op": "set_limit",
+      "type": "t",
+      "max_concurrent": 1
+    },
+    {
+      "expect_limit": {
+        "type": "t",
+        "max_concurrent": 1
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a0",
+        "status": "processing",
+        "current_worker_id": {
+          "$token": "c0"
+        }
+      }
+    },
+    {
+      "op": "renew",
+      "claim": "c2",
+      "expect": {
+        "renewed": true
+      },
+      "lease_ms": 30000
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c0",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c1",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "c2",
+      "value": null
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c3"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a3"
+        ]
+      }
+    }
+  ]
+}

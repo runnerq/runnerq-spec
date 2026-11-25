@@ -1,0 +1,163 @@
+{
+  "description": "A rate of 5 per 10 seconds allows a burst of 5, then refills at half a token a second by the database clock, up to 5. Claims take whole tokens; the fraction carries over.",
+  "steps": [
+    {
+      "op": "set_limit",
+      "type": "t",
+      "rate_tokens": 5,
+      "rate_per_s": 10
+    },
+    {
+      "submit_many": {
+        "prefix": "a",
+        "n": 15,
+        "type": "t"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c0",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a0",
+          "a1",
+          "a2",
+          "a3",
+          "a4"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "backdate_limit": "t",
+      "seconds": 4
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c5",
+        "c6"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a5",
+          "a6"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "backdate_limit": "t",
+      "seconds": 3
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [
+        "c7"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a7"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "backdate_limit": "t",
+      "seconds": 1
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a8"
+        ]
+      }
+    },
+    {
+      "backdate_limit": "t",
+      "seconds": 100
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a9",
+          "a10",
+          "a11",
+          "a12",
+          "a13"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "as": [],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    }
+  ]
+}
