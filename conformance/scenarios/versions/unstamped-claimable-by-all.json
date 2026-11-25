@@ -1,0 +1,70 @@
+{
+  "description": "Unstamped work is claimable by every worker, whatever versions it serves.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "u1",
+      "type": "t"
+    },
+    {
+      "op": "submit",
+      "as": "u2",
+      "type": "t"
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "as": [
+        "c1"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "u1"
+        ]
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B",
+        "C"
+      ],
+      "as": [
+        "c2"
+      ],
+      "limit": 1,
+      "expect": {
+        "claims": [
+          "u2"
+        ]
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "u1",
+        "status": "processing",
+        "code_version": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "u2",
+        "status": "processing",
+        "code_version": {
+          "$null": true
+        }
+      }
+    }
+  ]
+}

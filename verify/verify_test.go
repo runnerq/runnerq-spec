@@ -480,6 +480,7 @@ func TestCommandFingerprint(t *testing.T) {
 		At            string             `json:"at"`
 		Priority      int                `json:"priority"`
 		Payload       any                `json:"payload"`
+		Version       string             `json:"version"`
 	}) (any, error) {
 		m := map[string]any{"kind": in.Kind}
 		if len(in.IDs) > 0 {
@@ -500,7 +501,7 @@ func TestCommandFingerprint(t *testing.T) {
 				m[k] = true
 			}
 		}
-		for k, v := range map[string]string{"reason": in.Reason, "name": in.Name} {
+		for k, v := range map[string]string{"reason": in.Reason, "name": in.Name, "version": in.Version} {
 			if v != "" {
 				m[k] = v
 			}

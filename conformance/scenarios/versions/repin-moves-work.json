@@ -1,0 +1,259 @@
+{
+  "description": "Repin moves unfinished work to another version through the command ledger: it is claimable only under the new version, it records a Repinned event, a repeated command id replays, the same id with another version conflicts, a dry run changes nothing, and a filter on version moves the rest.",
+  "steps": [
+    {
+      "op": "submit",
+      "as": "a",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "b",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "c",
+      "type": "t",
+      "version": "A"
+    },
+    {
+      "op": "submit",
+      "as": "u",
+      "type": "t"
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "command_id": "repin-1",
+      "dry_run": true,
+      "ids": [
+        "a"
+      ],
+      "version": "B",
+      "expect": {
+        "applied": 0,
+        "items": {
+          "a": {
+            "outcome": "would_apply",
+            "status": "pending"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "code_version": "A"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "command_id": "repin-1",
+      "ids": [
+        "a",
+        "ghost"
+      ],
+      "version": "B",
+      "reason": "fix is compatible",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "replayed": false,
+        "items": {
+          "a": {
+            "outcome": "applied",
+            "status": "pending",
+            "error": {
+              "$null": true
+            }
+          },
+          "ghost": {
+            "outcome": "skipped",
+            "error": "not_found"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "a",
+        "status": "pending",
+        "code_version": "B"
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Repinned"
+        ]
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "command_id": "repin-1",
+      "ids": [
+        "a",
+        "ghost"
+      ],
+      "version": "B",
+      "reason": "fix is compatible",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "replayed": true
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "a",
+        "types": [
+          "Repinned"
+        ]
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "command_id": "repin-1",
+      "ids": [
+        "a",
+        "ghost"
+      ],
+      "version": "C",
+      "reason": "fix is compatible",
+      "expect": {
+        "error": "conflict"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "ids": [
+        "a"
+      ],
+      "version": "B",
+      "expect": {
+        "matched": 1,
+        "applied": 0,
+        "items": {
+          "a": {
+            "outcome": "skipped",
+            "error": "conflict"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "filter": {
+        "field": "version",
+        "op": "eq",
+        "value": "A"
+      },
+      "max": 1,
+      "version": "B",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "more": true,
+        "items": {
+          "b": {
+            "outcome": "applied"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "filter": {
+        "field": "version",
+        "op": "eq",
+        "value": "A"
+      },
+      "max": 10,
+      "version": "B",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "more": false,
+        "items": {
+          "c": {
+            "outcome": "applied"
+          }
+        }
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "filter": {
+        "not": {
+          "field": "version",
+          "op": "exists"
+        }
+      },
+      "max": 10,
+      "version": "B",
+      "expect": {
+        "matched": 1,
+        "applied": 1,
+        "items": {
+          "u": {
+            "outcome": "applied"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "u",
+        "code_version": "B"
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "A"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": []
+      }
+    },
+    {
+      "op": "claim",
+      "types": [
+        "t"
+      ],
+      "versions": [
+        "B"
+      ],
+      "as": [
+        "ca",
+        "cb",
+        "cc",
+        "cu"
+      ],
+      "limit": 10,
+      "expect": {
+        "claims": [
+          "a",
+          "b",
+          "c",
+          "u"
+        ]
+      }
+    }
+  ]
+}

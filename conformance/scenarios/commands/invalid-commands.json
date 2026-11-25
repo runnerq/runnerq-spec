@@ -1,5 +1,5 @@
 {
-  "description": "Malformed commands are rejected whole: no target, both ids and a filter, a filter without max, reschedule without a time, an out-of-range priority, a signal without a name.",
+  "description": "Malformed commands are rejected whole: no target, both ids and a filter, a filter without max, reschedule without a time, an out-of-range priority, a signal without a name, a repin without a version or with one over 256 bytes.",
   "steps": [
     {
       "op": "submit",
@@ -73,10 +73,34 @@
       }
     },
     {
+      "op": "command",
+      "kind": "repin",
+      "ids": [
+        "a"
+      ],
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "ids": [
+        "a"
+      ],
+      "version": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+      "expect": {
+        "error": "invalid_argument"
+      }
+    },
+    {
       "expect_row": {
         "activity": "a",
         "status": "pending",
-        "priority": 2
+        "priority": 2,
+        "code_version": {
+          "$null": true
+        }
       }
     }
   ]

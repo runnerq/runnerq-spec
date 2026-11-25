@@ -352,6 +352,41 @@
         "priority"
       ],
       "additionalProperties": false
+    },
+    "Repinned": {
+      "description": "A command moved the activity to another code version (versions.md).",
+      "type": "object",
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "description": "The command's id; empty when it had none."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The command's reason, when given."
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The version it was pinned to; null when it was unstamped."
+        },
+        "to": {
+          "type": "string",
+          "description": "The version it is pinned to now."
+        }
+      },
+      "required": [
+        "command_id",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
     }
   }
 }

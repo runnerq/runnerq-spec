@@ -88,6 +88,9 @@ What the schema can't enforce, every implementation keeps:
 - `runnerq_schedules.next_fire_at` is always a fire time of the row's
   `cron` and `timezone`; firing a schedule enqueues and advances it in one
   transaction ([schedules.md](../../schedules.md)).
+- `runnerq_activities.code_version` is set at insert: a root's from its
+  submitter, a child's from its root's row, whatever the spawner passed. Only
+  a `repin` command changes it afterwards ([versions.md](../../versions.md)).
 - `runnerq_limits` holds no counter: `max_concurrent` is checked against a
   count of the type's `processing` rows (`idx_runnerq_processing_v2`), taken
   while the claim holds the row's lock, so it can't drift. `tokens` and

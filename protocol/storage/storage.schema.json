@@ -243,6 +243,12 @@
           "type": "string",
           "maxLength": 64,
           "x-omitempty": true
+        },
+        "CodeVersion": {
+          "description": "The code version the activity is pinned to (versions.md); empty is unstamped. Ignored for a child, which takes its root's.",
+          "type": "string",
+          "maxLength": 256,
+          "x-omitempty": true
         }
       },
       "required": [
@@ -580,6 +586,18 @@
           "minimum": 0,
           "maximum": 65535,
           "x-go-type": "uint16"
+        },
+        "code_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-go-name": "CodeVersion",
+          "x-omitempty": true
         }
       },
       "required": [
@@ -760,6 +778,22 @@
               "items": {
                 "type": "string"
               }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "description": "When non-empty, claim only unstamped activities and those pinned to one of these versions (versions.md); empty or absent applies no version filter.",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "maxItems": 64
             },
             {
               "type": "null"
@@ -1119,6 +1153,22 @@
               "type": "null"
             }
           ]
+        },
+        "versions": {
+          "description": "When non-empty, claim only unstamped activities and those pinned to one of these versions (versions.md); empty or absent applies no version filter.",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "maxItems": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1335,6 +1385,22 @@
                 "maxLength": 64
               },
               "maxItems": 8
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "description": "When non-empty, claim only unstamped activities and those pinned to one of these versions (versions.md); empty or absent applies no version filter.",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "maxItems": 64
             },
             {
               "type": "null"

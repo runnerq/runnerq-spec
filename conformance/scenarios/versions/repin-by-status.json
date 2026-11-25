@@ -1,0 +1,110 @@
+{
+  "description": "Repin acts on every unfinished activity, running included (its attempt carries on; what it does next is claimed under the new version), and skips finished ones.",
+  "steps": [
+    {
+      "each_status": {
+        "prefix": "s_"
+      }
+    },
+    {
+      "op": "command",
+      "kind": "repin",
+      "command_id": "repin-all",
+      "ids": [
+        "s_pending",
+        "s_scheduled",
+        "s_retrying",
+        "s_running",
+        "s_waiting",
+        "s_completed",
+        "s_failed",
+        "s_dead_letter",
+        "s_cancelled"
+      ],
+      "version": "B",
+      "expect": {
+        "matched": 9,
+        "applied": 5,
+        "items": {
+          "s_pending": {
+            "outcome": "applied",
+            "status": "pending"
+          },
+          "s_scheduled": {
+            "outcome": "applied",
+            "status": "scheduled"
+          },
+          "s_retrying": {
+            "outcome": "applied",
+            "status": "scheduled"
+          },
+          "s_running": {
+            "outcome": "applied",
+            "status": "running"
+          },
+          "s_waiting": {
+            "outcome": "applied",
+            "status": "waiting"
+          },
+          "s_completed": {
+            "outcome": "skipped",
+            "status": "completed",
+            "error": "conflict"
+          },
+          "s_failed": {
+            "outcome": "skipped",
+            "status": "failed",
+            "error": "conflict"
+          },
+          "s_dead_letter": {
+            "outcome": "skipped",
+            "status": "dead_letter",
+            "error": "conflict"
+          },
+          "s_cancelled": {
+            "outcome": "skipped",
+            "status": "cancelled",
+            "error": "conflict"
+          }
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_running",
+        "status": "processing",
+        "code_version": "B",
+        "current_worker_id": {
+          "$token": "s_running"
+        }
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_waiting",
+        "code_version": "B"
+      }
+    },
+    {
+      "expect_row": {
+        "activity": "s_completed",
+        "code_version": {
+          "$null": true
+        }
+      }
+    },
+    {
+      "expect_events": {
+        "activity": "s_pending",
+        "types": [
+          "Repinned"
+        ]
+      }
+    },
+    {
+      "op": "complete",
+      "claim": "s_running",
+      "value": null
+    }
+  ]
+}

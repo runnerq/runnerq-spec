@@ -34,6 +34,7 @@ const wakeSkew = time.Second
 type activityRow struct {
 	id, typ, status string
 	parent          string
+	version         *string
 	completedAt     *time.Time
 	input           flowInput
 	result          *storedValue
@@ -62,6 +63,7 @@ type report struct {
 	stale                            int // a paused worker's step finished after another's was recorded
 	requeued, retried, yielded       int
 	faults                           string
+	versions                         string // -rolling only
 	failures                         []string
 }
 
@@ -70,6 +72,14 @@ func (rep *report) fail(format string, args ...any) {
 }
 
 func (rep *report) summary() string {
+	s := rep.counts()
+	if rep.versions != "" {
+		s += "chaos: rollout: " + rep.versions + "\n"
+	}
+	return s
+}
+
+func (rep *report) counts() string {
 	return fmt.Sprintf(`chaos: %d activities, %d invocations, %d step effects
 chaos: faults: %s
 chaos: storage saw %d lease expiries, %d retries, %d parks
@@ -118,7 +128,7 @@ func (r *run) check(ctx context.Context) (*report, error) {
 	acts := map[string]*activityRow{}
 	var order []string
 	rows, err := r.db.Query(ctx, `
-		SELECT a.id::text, a.activity_type, a.status, coalesce(a.parent_activity_id::text, ''), a.completed_at,
+		SELECT a.id::text, a.activity_type, a.status, coalesce(a.parent_activity_id::text, ''), a.code_version, a.completed_at,
 		       i.payload, i.serialization, res.state, res.data, res.serialization, res.created_at
 		FROM runnerq_activities a
 		LEFT JOIN runnerq_inputs i ON i.activity_id = a.id
@@ -132,7 +142,7 @@ func (r *run) check(ctx context.Context) (*report, error) {
 		var payload, resData []byte
 		var paySer, resState, resSer *string
 		var resAt *time.Time
-		if err := rows.Scan(&a.id, &a.typ, &a.status, &a.parent, &a.completedAt, &payload, &paySer, &resState, &resData, &resSer, &resAt); err != nil {
+		if err := rows.Scan(&a.id, &a.typ, &a.status, &a.parent, &a.version, &a.completedAt, &payload, &paySer, &resState, &resData, &resSer, &resAt); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -265,7 +275,36 @@ func (r *run) check(ctx context.Context) (*report, error) {
 		a := acts[id]
 		r.checkActivity(rep, a, children[id], checkpoints, ledger[id], events[id], paused, rootOf, signals)
 	}
+	if r.rolling {
+		r.checkVersions(rep, order, acts, ledger)
+	}
 	return rep, nil
+}
+
+// checkVersions checks a rolling deploy: every activity is pinned to A or B,
+// and ran only on workers of its version.
+func (r *run) checkVersions(rep *report, order []string, acts map[string]*activityRow, ledger map[string][]ledgerRow) {
+	count := map[string]int{}
+	for _, id := range order {
+		a := acts[id]
+		if a.version == nil {
+			rep.fail("%s (%s %s): unstamped in a rolling deploy", a.id, a.typ, a.input.Label)
+			continue
+		}
+		count[*a.version]++
+		for _, l := range ledger[id] {
+			if v := labelVersion(l.worker); v != *a.version {
+				rep.fail("%s (%s %s): pinned to %s, but its %s ran on %s (version %q)", a.id, a.typ, a.input.Label, *a.version, l.kind, l.worker, v)
+			}
+		}
+	}
+	r.rollout.mu.Lock()
+	rep.versions = fmt.Sprintf("%d activities at A, %d at B; B up at %.0fs, A stopped at %.0fs",
+		count[versionA], count[versionB], r.rollout.bStarted.Seconds(), r.rollout.aRetired.Seconds())
+	r.rollout.mu.Unlock()
+	if count[versionA] == 0 || count[versionB] == 0 {
+		rep.fail("the rollout tested nothing: %d activities at A, %d at B", count[versionA], count[versionB])
+	}
 }
 
 func deref(s *string) string {

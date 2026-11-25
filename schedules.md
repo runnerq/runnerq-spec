@@ -31,9 +31,11 @@ each tick once.
 | `retry_delay_seconds` | 1 | `retry_delay_seconds` |
 | `max_retry_delay_seconds` | 0 (the default cap) | `max_retry_delay_seconds` |
 | `metadata` | `{}` | `metadata` (string values) |
+| `code_version` | absent (unstamped) | `code_version`, the version the fire is pinned to ([versions.md](versions.md)) |
 
 Options are resolved when a schedule is upserted: an SDK writes every key,
-filling what the application left out from its own activity defaults. Firing
+filling what the application left out from its own activity defaults, and
+`code_version` when the upserting process has a version. Firing
 reads only the row, so a tick's activity is the same whichever SDK fires it;
 the defaults above apply only to keys a row lacks (written by other means),
 and every implementation applies the same ones.

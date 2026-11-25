@@ -4,6 +4,7 @@
     { "name": "activity.cancelled", "input": { "type": "activity.cancelled" }, "output": ["Cancelled"] },
     { "name": "activity.created", "input": { "type": "activity.created" }, "output": [] },
     { "name": "activity.priority_changed", "input": { "type": "activity.priority_changed" }, "output": ["PriorityChanged"] },
+    { "name": "activity.repinned", "input": { "type": "activity.repinned" }, "output": ["Repinned"] },
     { "name": "activity.rescheduled", "input": { "type": "activity.rescheduled" }, "output": ["Rescheduled"] },
     { "name": "activity.retried", "input": { "type": "activity.retried" }, "output": ["Retried"] },
     { "name": "activity.run_now", "input": { "type": "activity.run_now" }, "output": ["RunNow"] },
