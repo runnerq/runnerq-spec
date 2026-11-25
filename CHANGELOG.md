@@ -26,6 +26,10 @@
   (`RUNNERQ_CHAOS_LIMIT`); the harness samples its running count throughout
   the run and fails if it ever exceeds the limit.
 
+- `observability/metrics.json`: the `schedule_fires` counter (unit
+  `{activity}`, label `queue`), the activities enqueued by firing due
+  schedules. Both SDKs already emitted it under this name; it is now in the
+  catalog so they use the generated constant.
 - The Go modules (`runnerq-spec`, `tools/catalog`, `tools/conformance`) need
   Go 1.25 instead of 1.27, matching the Go SDK's floor. Nothing in them used
   a newer language feature.
